@@ -64,10 +64,14 @@ export function worldToScreen(
   worldX: number,
   worldY: number,
 ): { x: number; y: number } {
-  // zoom defaults to 1 everywhere except OfficeScene, so this is a no-op
-  // for every other scene's existing math
+  // zoom defaults to 1 everywhere except OfficeScene, so the zoom factor is
+  // a no-op for every other scene's existing math. Rounded because this is
+  // recomputed every frame against a lerped (continuously, fractionally
+  // drifting) camera-follow scroll — left unrounded, a CSS left/top in
+  // fractional px redraws slightly differently every frame, which reads as
+  // the prompt text jittering/"floating" in place, worse the higher the zoom.
   return {
-    x: (worldX - camera.scrollX) * camera.zoom * currentScale,
-    y: (worldY - camera.scrollY) * camera.zoom * currentScale,
+    x: Math.round((worldX - camera.scrollX) * camera.zoom * currentScale),
+    y: Math.round((worldY - camera.scrollY) * camera.zoom * currentScale),
   };
 }
