@@ -1,0 +1,70 @@
+import type Phaser from "phaser";
+import { GAME_WIDTH } from "@/config/constants";
+
+let currentScale = 1;
+
+/**
+ * Builds the DOM UI skeleton as a sibling of the Phaser canvas. Everything
+ * text-bearing in the game (dialogue, HUD, menus) lives here instead of in
+ * Phaser GameObjects, so it renders at native browser resolution — crisp
+ * at any window size — while the canvas underneath stays a small, chunky
+ * pixel-art surface. See syncViewport() for how the two stay aligned.
+ */
+export function initUIRoot(): HTMLDivElement {
+  const app = document.getElementById("app");
+  if (!app) throw new Error("#app root missing from index.html");
+  app.style.position = "relative";
+
+  const root = document.createElement("div");
+  root.id = "ui-root";
+  root.innerHTML = `
+    <div id="hud-layer">
+      <div id="objective-text" class="hidden"></div>
+      <div id="light-indicator">
+        <span id="light-dot" class="dark"></span>
+        <span id="light-label">IN SHADOW</span>
+      </div>
+    </div>
+    <div id="interact-prompt" class="hidden"></div>
+    <div id="dialogue-box" class="hidden">
+      <div id="dialogue-speaker"></div>
+      <div id="dialogue-text"></div>
+      <div id="dialogue-continue" class="hidden">&#9660;</div>
+    </div>
+    <div id="menu-layer" class="hidden"></div>
+    <div id="fade-layer"></div>
+  `;
+  app.appendChild(root);
+  return root;
+}
+
+/** Keeps #ui-root pixel-aligned with the Phaser canvas on every resize. */
+export function syncViewport(game: Phaser.Game): void {
+  const app = document.getElementById("app");
+  const uiRoot = document.getElementById("ui-root");
+  const canvas = game.canvas;
+  if (!app || !uiRoot || !canvas) return;
+
+  const appRect = app.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+
+  uiRoot.style.left = `${canvasRect.left - appRect.left}px`;
+  uiRoot.style.top = `${canvasRect.top - appRect.top}px`;
+  uiRoot.style.width = `${canvasRect.width}px`;
+  uiRoot.style.height = `${canvasRect.height}px`;
+
+  currentScale = canvasRect.width / GAME_WIDTH || 1;
+  uiRoot.style.setProperty("--ui-scale", currentScale.toFixed(4));
+}
+
+/** Converts a world-space point (in the given camera) to a px offset within #ui-root. */
+export function worldToScreen(
+  camera: Phaser.Cameras.Scene2D.Camera,
+  worldX: number,
+  worldY: number,
+): { x: number; y: number } {
+  return {
+    x: (worldX - camera.scrollX) * currentScale,
+    y: (worldY - camera.scrollY) * currentScale,
+  };
+}
