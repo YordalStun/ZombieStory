@@ -275,20 +275,23 @@ export class MotorwayScene extends Phaser.Scene {
    */
   private applyIdleShake(timeMs: number): void {
     const t = timeMs / 1000 + this.idleShakeSeed;
-    // two detuned sines so it doesn't land as a perfect metronome
-    const buzzX = Math.sin(t * 46) * 0.24 + Math.sin(t * 71 + 1.7) * 0.13;
-    const buzzY = Math.sin(t * 53 + 0.6) * 0.2 + Math.sin(t * 84 + 2.4) * 0.11;
+    // two detuned sines so it doesn't land as a perfect metronome — kept
+    // deliberately under the ~0.5px rounding threshold (roundPixels:true)
+    // so the constant hum reads as a faint tremor, not a jitter; the
+    // occasional jolt below is what actually reads as motion
+    const buzzX = Math.sin(t * 46) * 0.1 + Math.sin(t * 71 + 1.7) * 0.05;
+    const buzzY = Math.sin(t * 53 + 0.6) * 0.08 + Math.sin(t * 84 + 2.4) * 0.04;
     // idle RPM drifts a little rather than holding dead steady
-    const surge = 0.5 + 0.3 * Math.sin(t * 0.7);
+    const surge = 0.4 + 0.2 * Math.sin(t * 0.7);
     this.cameras.main.setScroll(buzzX * surge, buzzY * surge);
   }
 
   /** An occasional bigger jolt on top of the buzz — the engine catching unevenly. */
   private scheduleEngineJolt(): void {
     this.time.addEvent({
-      delay: Phaser.Math.Between(5500, 10000),
+      delay: Phaser.Math.Between(7000, 13000),
       callback: () => {
-        this.cameras.main.shake(110, 0.0011);
+        this.cameras.main.shake(90, 0.0005);
         this.scheduleEngineJolt();
       },
     });
