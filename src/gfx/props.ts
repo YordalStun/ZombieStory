@@ -47,7 +47,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.SINK]: { w: 16, h: 16 },
   [PropTex.COUNTER]: { w: 32, h: 16 },
   [PropTex.FRIDGE]: { w: 16, h: 24 },
-  [PropTex.DOOR]: { w: 16, h: 32 },
+  [PropTex.DOOR]: { w: 16, h: 48 },
   [PropTex.CAR]: { w: 40, h: 64 },
   [PropTex.ALARM_CLOCK]: { w: 10, h: 8 },
   [PropTex.SWITCH_OFF]: { w: 6, h: 10 },

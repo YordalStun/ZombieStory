@@ -89,15 +89,22 @@ export function buildApartmentLevel(): ApartmentLevel {
   grid.doorwayH(8, 5, 6, TILE.FLOOR_WOOD); // bedroom -> hallway
   grid.doorwayH(8, 11, 12, TILE.FLOOR_TILE); // bathroom -> hallway
   grid.doorwayH(8, 18, 19, TILE.FLOOR_WOOD); // kitchen -> hallway
-  grid.doorwayV(24, 5, 6, TILE.FLOOR_WOOD); // front door gap, kitchen -> driveway (2 tiles wide — a 1-tile gap leaves almost no margin around the player's collision box)
+  // front door gap, kitchen -> driveway. 3 tiles (48px) tall: 2 tiles measured
+  // 32px nominal, but the player's own 7px-tall collision box needs full
+  // clearance from the wall tiles bounding the gap on both sides, so the
+  // truly walkable band was only ~20px — comfortably missed by an ordinary,
+  // not pixel-perfectly-centred approach, which read as "the door's open but
+  // something's still blocking me."
+  grid.doorwayV(24, 5, 7, TILE.FLOOR_WOOD);
 
   grid.set(5, 2, TILE.WINDOW_NIGHT);
   grid.set(24, 3, TILE.WINDOW_DAY); // kitchen window, above the kitchen sink, facing the driveway — always daytime glass, this level never shows it at night
 
   // starts at column 25, OUTSIDE the kitchen's east wall (column 24) — starting
   // it at 24 painted walkable driveway over the wall at row 4, leaving an
-  // unblocked hole beside the door that let the player skip the whole routine
-  grid.fillRect(25, 4, 15, 3, TILE.DRIVEWAY);
+  // unblocked hole beside the door that let the player skip the whole routine.
+  // height 4 (not 3) to keep pace with the door gap's extra row above.
+  grid.fillRect(25, 4, 15, 4, TILE.DRIVEWAY);
   grid.fillRect(30, 2, 10, 11, TILE.DRIVEWAY);
 
   const props: PropSpec[] = [];
@@ -269,7 +276,7 @@ export function buildApartmentLevel(): ApartmentLevel {
     interactable: { prompt: "Grab keys", range: 20 },
   });
 
-  const door = tileCenter(24, 5.5);
+  const door = tileCenter(24, 6); // centered on the 3-row gap (rows 5-7)
   props.push({
     id: "front_door",
     tex: PropTex.DOOR,
@@ -280,7 +287,7 @@ export function buildApartmentLevel(): ApartmentLevel {
     interactable: { prompt: "Head outside", range: 26 },
   });
 
-  const entryMat = tileCenter(24.9, 5);
+  const entryMat = tileCenter(24.9, 6); // re-centered on the widened threshold
   props.push({ id: "entry_mat", tex: PropTex.RUG, x: entryMat.x, y: entryMat.y, floorDecal: true, tint: 0x8a7050 });
 
   const porchLight = tileCenter(24.6, 3.8);
