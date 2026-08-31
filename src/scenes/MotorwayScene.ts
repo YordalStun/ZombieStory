@@ -77,6 +77,9 @@ export class MotorwayScene extends Phaser.Scene {
   private dropletTimer?: Phaser.Time.TimerEvent;
   private rain?: Phaser.GameObjects.Particles.ParticleEmitter;
 
+  // random per-playthrough so the buzz doesn't line up the same way every time
+  private idleShakeSeed = Math.random() * 1000;
+
   constructor() {
     super(SceneKeys.MOTORWAY);
   }
@@ -114,6 +117,7 @@ export class MotorwayScene extends Phaser.Scene {
     this.createCabin();
     this.createWipers();
     this.setupInput();
+    this.scheduleEngineJolt();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.rain?.destroy();
@@ -257,6 +261,33 @@ export class MotorwayScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Nothing in this scene scrolls or moves — the queue is stopped dead, so
+   * the only motion is the whole cabin (and the world seen through the
+   * glass) buzzing on the engine's idle, which reads as "not going anywhere"
+   * far more clearly than a static frame does.
+   */
+  private applyIdleShake(timeMs: number): void {
+    const t = timeMs / 1000 + this.idleShakeSeed;
+    // two detuned sines so it doesn't land as a perfect metronome
+    const buzzX = Math.sin(t * 46) * 0.55 + Math.sin(t * 71 + 1.7) * 0.3;
+    const buzzY = Math.sin(t * 53 + 0.6) * 0.45 + Math.sin(t * 84 + 2.4) * 0.25;
+    // idle RPM drifts a little rather than holding dead steady
+    const surge = 0.6 + 0.4 * Math.sin(t * 0.7);
+    this.cameras.main.setScroll(buzzX * surge, buzzY * surge);
+  }
+
+  /** An occasional bigger jolt on top of the buzz — the engine catching unevenly. */
+  private scheduleEngineJolt(): void {
+    this.time.addEvent({
+      delay: Phaser.Math.Between(3500, 7500),
+      callback: () => {
+        this.cameras.main.shake(140, 0.0028);
+        this.scheduleEngineJolt();
+      },
+    });
+  }
+
   private setupInput(): void {
     const kb = this.input.keyboard!;
     this.cursors = kb.createCursorKeys();
@@ -272,7 +303,10 @@ export class MotorwayScene extends Phaser.Scene {
     this.showFocus();
   }
 
-  update(): void {
+  update(time: number): void {
+    // idles constantly — it shouldn't pause just because a dialogue line is up
+    this.applyIdleShake(time);
+
     if (this.busy || this.finished || DialoguePlayer.isActive()) return;
 
     const left = Phaser.Input.Keyboard.JustDown(this.leftKey) || Phaser.Input.Keyboard.JustDown(this.cursors.left);
