@@ -40,18 +40,23 @@ export class RainEffect {
     this.track(outdoor);
 
     for (const w of windows) {
+      // starts at the top of the pane and travels only far enough to reach the
+      // bottom of it — the old speed/lifespan let drops fall well past the sill
+      // and read as rain inside the room instead of trickling down the glass.
       const e = scene.add.particles(0, 0, FxTex.RAIN_DROP, {
         x: { min: w.x - 6, max: w.x + 6 },
-        y: { min: w.y - 2, max: w.y + 3 },
-        lifespan: 500,
-        speedY: { min: 40, max: 75 },
-        speedX: { min: -4, max: 4 },
+        y: { min: w.y - 8, max: w.y - 4 },
+        lifespan: 480,
+        speedY: { min: 20, max: 30 },
+        speedX: { min: -3, max: 3 },
         alpha: { start: 0.75, end: 0 },
         scale: { min: 0.7, max: 1.1 },
         quantity: 1,
-        frequency: 170,
+        frequency: 150,
       });
-      this.track(e);
+      // sits at the wall/glass plane, not above the whole room — anything in
+      // front of the window (furniture, the player) now correctly occludes it.
+      this.track(e, DEPTH.WALL + 1);
     }
 
     const freqs = [2000, 2400, 2800, 3200];
@@ -71,8 +76,8 @@ export class RainEffect {
     });
   }
 
-  private track(e: Phaser.GameObjects.Particles.ParticleEmitter): void {
-    e.setDepth(DEPTH.WEATHER);
+  private track(e: Phaser.GameObjects.Particles.ParticleEmitter, depth: number = DEPTH.WEATHER): void {
+    e.setDepth(depth);
     this.emitters.push(e);
   }
 

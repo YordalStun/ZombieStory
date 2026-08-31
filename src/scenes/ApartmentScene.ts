@@ -247,7 +247,7 @@ export class ApartmentScene extends Phaser.Scene {
     this.player.setVisible(false);
     this.cameras.main.centerOn(level.bedCenter.x, level.bedCenter.y - 10);
 
-    AudioManager.startLoop("tv", SfxKey.TV_HUM, 0.5);
+    AudioManager.startLoop("tv", SfxKey.TV_HUM, 0.24);
     await fadeIn(1400);
 
     await DialoguePlayer.play(NIGHT_BROADCAST);
@@ -270,7 +270,7 @@ export class ApartmentScene extends Phaser.Scene {
 
   private async startAtMorning(level: ApartmentLevel): Promise<void> {
     this.transitionToMorningLighting(level);
-    AudioManager.startLoop("tv", SfxKey.TV_HUM, 0.5);
+    AudioManager.startLoop("tv", SfxKey.TV_HUM, 0.24);
     this.beginMorningFree();
     await fadeIn(900);
   }
@@ -334,7 +334,9 @@ export class ApartmentScene extends Phaser.Scene {
       callback: () => {
         if (!this.showerDripping) return;
         const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, x, y);
-        if (dist < 90) AudioManager.playSfx(SfxKey.DRIP, { volume: 0.3 });
+        // tight enough to stay inside the bathroom — it was previously audible
+        // through the wall from the bedroom and hallway
+        if (dist < 58) AudioManager.playSfx(SfxKey.DRIP, { volume: 0.13 });
       },
     });
   }
@@ -596,7 +598,7 @@ export class ApartmentScene extends Phaser.Scene {
     this.lighting.setEnabled("tv", this.tvOn);
 
     if (this.tvOn) {
-      AudioManager.startLoop("tv", SfxKey.TV_HUM, 0.5);
+      AudioManager.startLoop("tv", SfxKey.TV_HUM, 0.24);
       AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.4 });
       await this.playLinesBlocking(TV_MORNING_ON_LINES);
     } else {

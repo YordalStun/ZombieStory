@@ -165,9 +165,9 @@ export function synthTVHum(duration = 2.5): Promise<AudioBuffer> {
     const filter = ctx.createBiquadFilter();
     filter.type = "bandpass";
     filter.frequency.setValueAtTime(2200, 0);
-    filter.Q.setValueAtTime(0.7, 0);
+    filter.Q.setValueAtTime(1.1, 0);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.05, 0);
+    gain.gain.setValueAtTime(0.02, 0);
     src.connect(filter).connect(gain).connect(ctx.destination);
     src.start(0);
 

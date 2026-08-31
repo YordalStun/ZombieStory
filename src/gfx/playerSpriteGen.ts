@@ -38,6 +38,17 @@ function drawBody(ctx: CanvasRenderingContext2D, dir: "down" | "up" | "right", o
   rect(ctx, 3, 6, 10, 10, opts.shirt);
   rect(ctx, 3, 13, 10, 3, opts.shirtShadow);
 
+  // arms swing opposite the forward leg, same alternating-gait offset as above
+  const armY = 7;
+  const sleeveH = 6;
+  const handH = 2;
+  const lArmY = armY + (opts.legOffset === 1 ? 1 : 0);
+  const rArmY = armY + (opts.legOffset === -1 ? 1 : 0);
+  rect(ctx, 1, lArmY, 2, sleeveH, opts.shirt);
+  rect(ctx, 1, lArmY + sleeveH, 2, handH, Palette.skin);
+  rect(ctx, 13, rArmY, 2, sleeveH, opts.shirt);
+  rect(ctx, 13, rArmY + sleeveH, 2, handH, Palette.skin);
+
   if (dir === "down") {
     rect(ctx, 4, 0, 8, 6, Palette.hair);
     rect(ctx, 4, 2, 8, 4, Palette.skin);
