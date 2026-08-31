@@ -53,8 +53,9 @@ export function syncViewport(game: Phaser.Game): void {
   uiRoot.style.width = `${canvasRect.width}px`;
   uiRoot.style.height = `${canvasRect.height}px`;
 
+  // Used only for world<->screen coordinate math (interact prompts) — UI
+  // text/chrome sizing is intentionally independent of this, see ui.css.
   currentScale = canvasRect.width / GAME_WIDTH || 1;
-  uiRoot.style.setProperty("--ui-scale", currentScale.toFixed(4));
 }
 
 /** Converts a world-space point (in the given camera) to a px offset within #ui-root. */

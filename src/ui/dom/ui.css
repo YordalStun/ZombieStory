@@ -1,5 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap");
 
+/*
+ * Sizing philosophy: the Phaser canvas underneath scales up with the
+ * window (that's what makes the pixel art chunky/crisp), but text should
+ * NOT scale by that same factor — on an ordinary desktop window the
+ * canvas zoom is already 3-4x, and multiplying font-size by that made
+ * every label enormous. Everything here uses clamp(min, preferred-vw,
+ * max) instead, sized off the actual browser viewport so it stays a
+ * normal, comfortable reading size regardless of how big the pixel-art
+ * world underneath is scaled.
+ */
+
 #ui-root {
   position: absolute;
   left: 0;
@@ -7,7 +18,6 @@
   pointer-events: none;
   font-family: "VT323", "Courier New", monospace;
   color: #f0ece2;
-  --ui-scale: 1;
   overflow: hidden;
 }
 
@@ -22,7 +32,7 @@
   left: 0;
   top: 0;
   width: 100%;
-  padding: calc(8px * var(--ui-scale));
+  padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -35,9 +45,9 @@
 
 #objective-text {
   background: rgba(8, 8, 12, 0.55);
-  border: calc(1px * var(--ui-scale)) solid rgba(240, 236, 226, 0.25);
-  padding: calc(4px * var(--ui-scale)) calc(9px * var(--ui-scale));
-  font-size: calc(15px * var(--ui-scale));
+  border: 1px solid rgba(240, 236, 226, 0.25);
+  padding: 5px 10px;
+  font-size: clamp(13px, 1.1vw, 16px);
   letter-spacing: 0.03em;
 }
 
@@ -48,30 +58,30 @@
 #light-indicator {
   display: flex;
   align-items: center;
-  gap: calc(6px * var(--ui-scale));
+  gap: 6px;
   background: rgba(8, 8, 12, 0.55);
-  border: calc(1px * var(--ui-scale)) solid rgba(240, 236, 226, 0.25);
-  padding: calc(4px * var(--ui-scale)) calc(9px * var(--ui-scale));
-  font-size: calc(14px * var(--ui-scale));
+  border: 1px solid rgba(240, 236, 226, 0.25);
+  padding: 5px 10px;
+  font-size: clamp(12px, 1vw, 15px);
 }
 
 #light-dot {
-  width: calc(9px * var(--ui-scale));
-  height: calc(9px * var(--ui-scale));
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   display: inline-block;
   background: #2c3348;
-  box-shadow: 0 0 calc(2px * var(--ui-scale)) rgba(0, 0, 0, 0.6) inset;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.6) inset;
 }
 
 #light-dot.dim {
   background: #7a8a5a;
-  box-shadow: 0 0 calc(6px * var(--ui-scale)) rgba(170, 200, 120, 0.7);
+  box-shadow: 0 0 6px rgba(170, 200, 120, 0.7);
 }
 
 #light-dot.bright {
   background: #ffd15c;
-  box-shadow: 0 0 calc(8px * var(--ui-scale)) rgba(255, 209, 92, 0.85);
+  box-shadow: 0 0 8px rgba(255, 209, 92, 0.85);
 }
 
 /* ---------- interact prompt ---------- */
@@ -80,9 +90,9 @@
   position: absolute;
   transform: translate(-50%, -100%);
   background: rgba(8, 8, 12, 0.75);
-  border: calc(1px * var(--ui-scale)) solid rgba(240, 236, 226, 0.35);
-  padding: calc(3px * var(--ui-scale)) calc(8px * var(--ui-scale));
-  font-size: calc(14px * var(--ui-scale));
+  border: 1px solid rgba(240, 236, 226, 0.35);
+  padding: 4px 9px;
+  font-size: clamp(12px, 1vw, 15px);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -95,13 +105,13 @@
 
 #dialogue-box {
   position: absolute;
-  left: calc(10px * var(--ui-scale));
-  right: calc(10px * var(--ui-scale));
-  bottom: calc(10px * var(--ui-scale));
-  min-height: calc(58px * var(--ui-scale));
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  min-height: 100px;
   background: rgba(6, 6, 10, 0.82);
-  border: calc(2px * var(--ui-scale)) solid rgba(240, 236, 226, 0.4);
-  padding: calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  border: 2px solid rgba(240, 236, 226, 0.4);
+  padding: 14px 20px;
   pointer-events: auto;
   cursor: pointer;
 }
@@ -112,23 +122,23 @@
 
 #dialogue-speaker {
   font-family: "Press Start 2P", monospace;
-  font-size: calc(10px * var(--ui-scale));
+  font-size: clamp(11px, 0.85vw, 14px);
   color: #ffd15c;
-  margin-bottom: calc(6px * var(--ui-scale));
+  margin-bottom: 6px;
   letter-spacing: 0.02em;
 }
 
 #dialogue-text {
-  font-size: calc(19px * var(--ui-scale));
+  font-size: clamp(16px, 1.4vw, 21px);
   line-height: 1.35;
-  min-height: calc(26px * var(--ui-scale));
+  min-height: 26px;
 }
 
 #dialogue-continue {
   position: absolute;
-  right: calc(14px * var(--ui-scale));
-  bottom: calc(8px * var(--ui-scale));
-  font-size: calc(13px * var(--ui-scale));
+  right: 16px;
+  bottom: 12px;
+  font-size: clamp(12px, 1vw, 15px);
   color: #ffd15c;
   animation: dialogue-bounce 1s infinite;
 }
@@ -139,7 +149,7 @@
 
 @keyframes dialogue-bounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(calc(3px * var(--ui-scale))); }
+  50% { transform: translateY(3px); }
 }
 
 /* ---------- menus ---------- */
@@ -162,48 +172,48 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: calc(14px * var(--ui-scale));
+  gap: 16px;
   background: rgba(10, 9, 16, 0.85);
-  border: calc(2px * var(--ui-scale)) solid rgba(240, 236, 226, 0.3);
-  padding: calc(28px * var(--ui-scale)) calc(36px * var(--ui-scale));
-  min-width: calc(220px * var(--ui-scale));
+  border: 2px solid rgba(240, 236, 226, 0.3);
+  padding: 32px 44px;
+  min-width: clamp(280px, 26vw, 420px);
 }
 
 .game-title {
   font-family: "Press Start 2P", monospace;
-  font-size: calc(28px * var(--ui-scale));
+  font-size: clamp(28px, 3.6vw, 44px);
   color: #f0ece2;
-  text-shadow: calc(3px * var(--ui-scale)) calc(3px * var(--ui-scale)) 0 rgba(138, 31, 43, 0.7);
+  text-shadow: 3px 3px 0 rgba(138, 31, 43, 0.7);
   margin: 0;
   text-align: center;
 }
 
 .game-title.small {
-  font-size: calc(18px * var(--ui-scale));
-  text-shadow: calc(2px * var(--ui-scale)) calc(2px * var(--ui-scale)) 0 rgba(138, 31, 43, 0.7);
+  font-size: clamp(20px, 2.2vw, 28px);
+  text-shadow: 2px 2px 0 rgba(138, 31, 43, 0.7);
 }
 
 .game-subtitle {
-  font-size: calc(16px * var(--ui-scale));
+  font-size: clamp(14px, 1.3vw, 19px);
   color: #b8b2a0;
-  margin-top: calc(-8px * var(--ui-scale));
+  margin-top: -6px;
   letter-spacing: 0.04em;
 }
 
 .menu-nav {
   display: flex;
   flex-direction: column;
-  gap: calc(8px * var(--ui-scale));
+  gap: 10px;
   width: 100%;
 }
 
 .menu-button {
   font-family: "Press Start 2P", monospace;
-  font-size: calc(12px * var(--ui-scale));
+  font-size: clamp(11px, 1vw, 15px);
   color: #f0ece2;
   background: rgba(240, 236, 226, 0.08);
-  border: calc(1px * var(--ui-scale)) solid rgba(240, 236, 226, 0.4);
-  padding: calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale));
+  border: 1px solid rgba(240, 236, 226, 0.4);
+  padding: 12px 20px;
   cursor: pointer;
   transition: background 0.12s, transform 0.12s;
 }
@@ -211,7 +221,7 @@
 .menu-button:hover:not(:disabled) {
   background: rgba(255, 209, 92, 0.18);
   border-color: #ffd15c;
-  transform: translateX(calc(3px * var(--ui-scale)));
+  transform: translateX(3px);
 }
 
 .menu-button:disabled {
@@ -220,19 +230,19 @@
 }
 
 .quit-note {
-  font-size: calc(14px * var(--ui-scale));
+  font-size: clamp(12px, 1vw, 15px);
   color: #b8b2a0;
   text-align: center;
-  max-width: calc(240px * var(--ui-scale));
+  max-width: 280px;
 }
 
 .settings-slider-row {
   display: grid;
-  grid-template-columns: calc(120px * var(--ui-scale)) 1fr calc(46px * var(--ui-scale));
+  grid-template-columns: 130px 1fr 50px;
   align-items: center;
-  gap: calc(10px * var(--ui-scale));
+  gap: 10px;
   width: 100%;
-  font-size: calc(15px * var(--ui-scale));
+  font-size: clamp(13px, 1.1vw, 16px);
 }
 
 .settings-slider-row input[type="range"] {
@@ -248,8 +258,8 @@
 .settings-checkbox-row {
   display: flex;
   align-items: center;
-  gap: calc(8px * var(--ui-scale));
-  font-size: calc(15px * var(--ui-scale));
+  gap: 8px;
+  font-size: clamp(13px, 1.1vw, 16px);
   width: 100%;
   cursor: pointer;
 }

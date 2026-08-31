@@ -35,7 +35,7 @@ export const Palette = {
   doorWood: 0x6b4a34,
   doorFrame: 0x4a3624,
   windowGlassNight: 0x1c2740,
-  windowGlassDay: 0x8fc2e8,
+  windowGlassDay: 0x9aa8ae, // overcast, rainy-morning gray — not bright sunny blue
 
   // Furniture / props
   bedFrame: 0x543a28,

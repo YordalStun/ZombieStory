@@ -12,6 +12,9 @@ export const SfxKey = {
   CAR_ENGINE: "sfx_car_engine",
   TV_HUM: "sfx_tv_hum",
   TV_OFF: "sfx_tv_off",
+  RAIN: "sfx_rain",
+  WIND: "sfx_wind",
+  DRIP: "sfx_drip",
 } as const;
 
 export const MusicKey = {
@@ -47,9 +50,12 @@ class AudioManagerClass {
       [SfxKey.FOOTSTEP, synth.synthFootstep()],
       [SfxKey.INTERACT, synth.synthInteract()],
       [SfxKey.DOOR, synth.synthDoor()],
+      [SfxKey.DRIP, synth.synthDrip()],
       [SfxKey.CAR_ENGINE, synth.synthCarEngine()],
       [SfxKey.TV_HUM, synth.synthTVHum(2.5)],
       [SfxKey.TV_OFF, synth.synthTVOff()],
+      [SfxKey.RAIN, synth.synthRain(4)],
+      [SfxKey.WIND, synth.synthWind(6)],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],
     ];
@@ -89,6 +95,19 @@ class AudioManagerClass {
     });
     sound.play();
     this.loopingBeds.set(id, { sound, baseVolume: volume });
+  }
+
+  /** Smoothly retargets a loop's base volume — e.g. rain/wind swelling as the player steps outside. */
+  setLoopVolume(id: string, volume: number, tweenMs = 800): void {
+    const bed = this.loopingBeds.get(id);
+    if (!this.scene || !bed) return;
+    bed.baseVolume = volume;
+    const s = this.settings;
+    this.scene.tweens.add({
+      targets: bed.sound,
+      volume: volume * s.sfxVolume * s.masterVolume,
+      duration: tweenMs,
+    });
   }
 
   stopLoop(id: string): void {

@@ -25,6 +25,22 @@ async function render(
   return ctx.startRendering();
 }
 
+export function synthDrip(): Promise<AudioBuffer> {
+  return render(0.35, (ctx) => {
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1400, 0);
+    osc.frequency.exponentialRampToValueAtTime(500, 0.12);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, 0);
+    gain.gain.exponentialRampToValueAtTime(0.2, 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, 0.3);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(0);
+    osc.stop(0.35);
+  });
+}
+
 export function synthUIClick(): Promise<AudioBuffer> {
   return render(0.09, (ctx) => {
     const osc = ctx.createOscillator();
@@ -176,6 +192,56 @@ export function synthTVOff(): Promise<AudioBuffer> {
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.3, 0);
     gain.gain.exponentialRampToValueAtTime(0.0001, 0.18);
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(0);
+  });
+}
+
+export function synthRain(duration = 4): Promise<AudioBuffer> {
+  return render(duration, (ctx) => {
+    const hiss = ctx.createBufferSource();
+    hiss.buffer = whiteNoiseBuffer(ctx, duration);
+    const hissFilter = ctx.createBiquadFilter();
+    hissFilter.type = "bandpass";
+    hissFilter.frequency.setValueAtTime(3400, 0);
+    hissFilter.Q.setValueAtTime(0.5, 0);
+    const hissGain = ctx.createGain();
+    hissGain.gain.setValueAtTime(0.22, 0);
+    hiss.connect(hissFilter).connect(hissGain).connect(ctx.destination);
+    hiss.start(0);
+
+    const body = ctx.createBufferSource();
+    body.buffer = whiteNoiseBuffer(ctx, duration);
+    const bodyFilter = ctx.createBiquadFilter();
+    bodyFilter.type = "lowpass";
+    bodyFilter.frequency.setValueAtTime(500, 0);
+    const bodyGain = ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.13, 0);
+    body.connect(bodyFilter).connect(bodyGain).connect(ctx.destination);
+    body.start(0);
+  });
+}
+
+export function synthWind(duration = 6): Promise<AudioBuffer> {
+  return render(duration, (ctx) => {
+    const src = ctx.createBufferSource();
+    src.buffer = whiteNoiseBuffer(ctx, duration);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(300, 0);
+    filter.Q.setValueAtTime(3, 0);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.15, 0);
+
+    // slow gust — a low-frequency oscillator sweeping the filter cutoff
+    const lfo = ctx.createOscillator();
+    lfo.frequency.setValueAtTime(0.09, 0);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(120, 0);
+    lfo.connect(lfoGain).connect(filter.frequency);
+    lfo.start(0);
+    lfo.stop(duration);
+
     src.connect(filter).connect(gain).connect(ctx.destination);
     src.start(0);
   });

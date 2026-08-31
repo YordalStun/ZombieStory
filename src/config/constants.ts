@@ -20,6 +20,7 @@ export const DEPTH = {
   FLOOR_DECAL: 1,
   WALL: 5,
   ACTOR_SORT_BASE: 50,
+  WEATHER: 5000,
   OVERLAY_DARKNESS: 900,
 } as const;
 

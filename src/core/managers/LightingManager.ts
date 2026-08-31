@@ -9,6 +9,13 @@ export interface FlickerConfig {
   changeEveryMs?: [number, number];
 }
 
+export interface ColorCycleConfig {
+  /** Colors to cycle through, in order, looping back to the first. At least 2. */
+  colors: number[];
+  /** Time (ms) to complete one full loop through every color. */
+  periodMs: number;
+}
+
 interface LightHandle {
   light: Phaser.GameObjects.Light;
   baseRadius: number;
@@ -18,6 +25,21 @@ interface LightHandle {
   flickerCurrent: number;
   flickerTarget: number;
   nextChangeAt: number;
+  colorCycle?: ColorCycleConfig;
+  currentColor: number;
+}
+
+function lerpColor(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 0xff;
+  const ag = (a >> 8) & 0xff;
+  const ab = a & 0xff;
+  const br = (b >> 16) & 0xff;
+  const bg = (b >> 8) & 0xff;
+  const bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return (r << 16) | (g << 8) | bl;
 }
 
 /**
@@ -58,6 +80,7 @@ export class LightingManager {
     color: number,
     intensity: number,
     flicker?: FlickerConfig,
+    colorCycle?: ColorCycleConfig,
   ): void {
     const light = this.scene.lights.addLight(x, y, radius, color, intensity);
     this.lightsById.set(id, {
@@ -69,6 +92,8 @@ export class LightingManager {
       flickerCurrent: 1,
       flickerTarget: 1,
       nextChangeAt: 0,
+      colorCycle,
+      currentColor: colorCycle ? colorCycle.colors[0] : color,
     });
   }
 
@@ -95,27 +120,45 @@ export class LightingManager {
     }
   }
 
-  update(_time: number, delta: number): void {
+  update(time: number, delta: number): void {
     for (const h of this.lightsById.values()) {
-      if (!h.enabled || !h.flicker) continue;
+      if (!h.enabled) continue;
 
-      if (_time >= h.nextChangeAt) {
-        const jitter = h.flicker.intensityJitter;
-        h.flickerTarget = 1 - jitter + Math.random() * jitter * 2;
-        const [lo, hi] = h.flicker.changeEveryMs ?? [70, 180];
-        h.nextChangeAt = _time + lo + Math.random() * (hi - lo);
+      if (h.flicker) {
+        if (time >= h.nextChangeAt) {
+          const jitter = h.flicker.intensityJitter;
+          h.flickerTarget = 1 - jitter + Math.random() * jitter * 2;
+          const [lo, hi] = h.flicker.changeEveryMs ?? [70, 180];
+          h.nextChangeAt = time + lo + Math.random() * (hi - lo);
+        }
+
+        // exponential smoothing toward target — a random walk reads as an
+        // organic flicker, a pure sine wave reads as a mechanical pulse
+        const rate = 1 - Math.pow(0.001, delta / 1000);
+        h.flickerCurrent += (h.flickerTarget - h.flickerCurrent) * rate;
+
+        h.light.setIntensity(h.baseIntensity * h.flickerCurrent);
+        if (h.flicker.radiusJitter) {
+          h.light.setRadius(h.baseRadius * (1 - h.flicker.radiusJitter + h.flickerCurrent * h.flicker.radiusJitter));
+        }
       }
 
-      // exponential smoothing toward target — a random walk reads as an
-      // organic flicker, a pure sine wave reads as a mechanical pulse
-      const rate = 1 - Math.pow(0.001, delta / 1000);
-      h.flickerCurrent += (h.flickerTarget - h.flickerCurrent) * rate;
-
-      h.light.setIntensity(h.baseIntensity * h.flickerCurrent);
-      if (h.flicker.radiusJitter) {
-        h.light.setRadius(h.baseRadius * (1 - h.flicker.radiusJitter + h.flickerCurrent * h.flicker.radiusJitter));
+      if (h.colorCycle) {
+        const n = h.colorCycle.colors.length;
+        const segmentMs = h.colorCycle.periodMs / n;
+        const t = (time % h.colorCycle.periodMs) / segmentMs;
+        const idx = Math.floor(t) % n;
+        const nextIdx = (idx + 1) % n;
+        const color = lerpColor(h.colorCycle.colors[idx], h.colorCycle.colors[nextIdx], t - Math.floor(t));
+        h.currentColor = color;
+        h.light.setColor(color);
       }
     }
+  }
+
+  /** The light's current color — meaningful mainly for a colorCycle light, so a matching sprite can be tinted in sync (see the lava lamp). */
+  getCurrentColor(id: string): number | undefined {
+    return this.lightsById.get(id)?.currentColor;
   }
 
   /**
