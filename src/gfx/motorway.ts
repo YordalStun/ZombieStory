@@ -3,9 +3,6 @@ import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 
 export const MwTex = {
   BACKDROP: "mw_backdrop",
-  CAR_FAR: "mw_car_far",
-  CAR_MID: "mw_car_mid",
-  CAR_NEAR: "mw_car_near",
   HEADLINER: "mw_headliner",
   PILLAR: "mw_pillar",
   DASH: "mw_dash",
@@ -17,21 +14,10 @@ export const MwTex = {
   GLASS_GRIME: "mw_glass_grime",
 } as const;
 
-const MwSize: Record<string, { w: number; h: number }> = {
-  [MwTex.BACKDROP]: { w: GAME_WIDTH, h: GAME_HEIGHT },
-  [MwTex.CAR_FAR]: { w: 26, h: 18 },
-  [MwTex.CAR_MID]: { w: 40, h: 28 },
-  [MwTex.CAR_NEAR]: { w: 60, h: 42 },
-  [MwTex.HEADLINER]: { w: GAME_WIDTH, h: 26 },
-  [MwTex.PILLAR]: { w: 20, h: 146 },
-  [MwTex.DASH]: { w: GAME_WIDTH, h: 102 },
-  [MwTex.WHEEL]: { w: 196, h: 104 },
-  [MwTex.RADIO_ON]: { w: 56, h: 30 },
-  [MwTex.RADIO_OFF]: { w: 56, h: 30 },
-  [MwTex.WIPER]: { w: 4, h: 96 },
-  [MwTex.MIRROR]: { w: 46, h: 15 },
-  [MwTex.GLASS_GRIME]: { w: GAME_WIDTH - 40, h: 142 },
-};
+/** Texture key for one baked queue-car instance — see QUEUE_CARS below. */
+export function carTexKey(id: string): string {
+  return `mw_car_${id}`;
+}
 
 /** Where the glass sits, in screen space — the cabin frame is built around this. */
 export const GLASS = { x: 20, y: 26, w: GAME_WIDTH - 40, h: 142 };
@@ -47,12 +33,11 @@ const C = {
   laneMark: 0xb9b3a2,
   barrier: 0x6a6f75,
   barrierPost: 0x3c4046,
-  carBody: 0x8a3f3f,
-  carGlass: 0x2b3138,
-  carRoof: 0x6f3434,
+  carGlass: 0x262b31,
   tailLight: 0xff4a3a,
   tailGlow: 0xff8a72,
   plate: 0xcfc8b0,
+  distantCar: 0x2e3238,
   cabin: 0x1a1c20,
   cabinLit: 0x24272c,
   dash: 0x212429,
@@ -74,9 +59,10 @@ const C = {
 function draw(
   scene: Phaser.Scene,
   key: string,
+  w: number,
+  h: number,
   fn: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
 ): void {
-  const { w, h } = MwSize[key];
   const tex = ensureCanvas(scene, key, w, h);
   const ctx = tex.getContext();
   clear(ctx, w, h);
@@ -84,23 +70,104 @@ function draw(
   tex.refresh();
 }
 
-/** A car seen from directly behind, sized for its distance up the queue. */
-function drawCarRear(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  const lightH = Math.max(2, Math.round(h * 0.12));
-  const lightW = Math.max(3, Math.round(w * 0.16));
-  const roofInset = Math.round(w * 0.12);
+// a handful of realistic, clearly distinct body/roof tones — every queue car
+// picks a pair from here, drawn directly rather than tinted at runtime, since
+// tinting one shared silhouette washed the glass and tail lights out too
+const CAR_COLORS: Array<{ body: number; roof: number }> = [
+  { body: 0xdcd7ca, roof: 0xbdb8a9 }, // cream / white
+  { body: 0x9298a0, roof: 0x767c84 }, // silver
+  { body: 0x2c2f34, roof: 0x1e2024 }, // charcoal
+  { body: 0x9c3d3d, roof: 0x7c2f2f }, // red
+  { body: 0x5c2530, roof: 0x431b24 }, // maroon
+  { body: 0x314f70, roof: 0x243a54 }, // navy
+  { body: 0x8c7c5c, roof: 0x6e6047 }, // tan
+  { body: 0x3f5c46, roof: 0x2e4433 }, // forest green
+];
 
-  // roof and rear window sit above the boot line
-  rect(ctx, roofInset, 0, w - roofInset * 2, Math.round(h * 0.34), C.carRoof);
-  rect(ctx, roofInset + 2, 2, w - roofInset * 2 - 4, Math.round(h * 0.24), C.carGlass);
+export type CarStyle = "sedan" | "estate" | "van" | "hatch";
+
+/** One car baked and placed in the stopped queue. */
+export interface QueueCarSpec {
+  id: string;
+  style: CarStyle;
+  colorIndex: number;
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+  /** Near cars ride their brakes visibly; distant ones don't need the glow. */
+  brakeLit: boolean;
+}
+
+/**
+ * Three lanes of stopped traffic receding toward the horizon, nose-to-tail
+ * within each lane rather than scattered — that's what actually reads as a
+ * backed-up queue instead of a handful of cars dropped on an empty road.
+ * Positions are hand-placed (not randomised) so the scene is reproducible.
+ */
+export const QUEUE_CARS: QueueCarSpec[] = [
+  // left lane
+  { id: "a0", style: "hatch", colorIndex: 1, w: 56, h: 38, x: 90, y: 158, brakeLit: true },
+  { id: "a1", style: "sedan", colorIndex: 5, w: 37, h: 26, x: 101, y: 136, brakeLit: false },
+  { id: "a2", style: "van", colorIndex: 2, w: 27, h: 20, x: 92, y: 119, brakeLit: false },
+  { id: "a3", style: "estate", colorIndex: 6, w: 19, h: 14, x: 98, y: 105, brakeLit: false },
+
+  // centre lane — straight ahead, so its lead car is the closest thing in the scene
+  { id: "b0", style: "estate", colorIndex: 3, w: 62, h: 43, x: 236, y: 152, brakeLit: true },
+  { id: "b1", style: "hatch", colorIndex: 0, w: 40, h: 27, x: 248, y: 129, brakeLit: false },
+  { id: "b2", style: "sedan", colorIndex: 7, w: 28, h: 20, x: 238, y: 113, brakeLit: false },
+  { id: "b3", style: "van", colorIndex: 4, w: 20, h: 15, x: 246, y: 100, brakeLit: false },
+  { id: "b4", style: "sedan", colorIndex: 1, w: 15, h: 11, x: 232, y: 96, brakeLit: false },
+
+  // right lane
+  { id: "c0", style: "sedan", colorIndex: 2, w: 54, h: 37, x: 380, y: 160, brakeLit: true },
+  { id: "c1", style: "van", colorIndex: 6, w: 37, h: 26, x: 392, y: 137, brakeLit: false },
+  { id: "c2", style: "hatch", colorIndex: 3, w: 26, h: 18, x: 382, y: 119, brakeLit: false },
+  { id: "c3", style: "estate", colorIndex: 0, w: 18, h: 13, x: 390, y: 104, brakeLit: false },
+];
+
+/** A car seen from directly behind, its silhouette shaped by `style`. */
+function drawCarRear(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  style: CarStyle,
+  bodyColor: number,
+  roofColor: number,
+): void {
+  const shape = {
+    sedan: { roofInset: 0.12, roofFrac: 0.34, flatRoof: false, lightFrac: 0.16 },
+    estate: { roofInset: 0.1, roofFrac: 0.56, flatRoof: false, lightFrac: 0.15 },
+    van: { roofInset: 0.04, roofFrac: 0.72, flatRoof: true, lightFrac: 0.2 },
+    hatch: { roofInset: 0.14, roofFrac: 0.46, flatRoof: false, lightFrac: 0.14 },
+  }[style];
+
+  const roofInset = Math.max(1, Math.round(w * shape.roofInset));
+  const roofH = Math.round(h * shape.roofFrac);
+  const lightH = Math.max(2, Math.round(h * 0.11));
+  const lightW = Math.max(3, Math.round(w * shape.lightFrac));
+
+  // roof and rear window
+  rect(ctx, roofInset, 0, w - roofInset * 2, roofH, roofColor);
+  rect(ctx, roofInset + 2, shape.flatRoof ? 2 : 1, w - roofInset * 2 - 4, Math.max(2, roofH - 5), C.carGlass);
+  if (!shape.flatRoof) {
+    // rounded shoulder into the body — a van's roof stays square instead
+    rect(ctx, roofInset - 1, roofH - 2, 1, 2, bodyColor);
+    rect(ctx, w - roofInset, roofH - 2, 1, 2, bodyColor);
+  }
 
   // body
-  rect(ctx, 0, Math.round(h * 0.32), w, Math.round(h * 0.52), C.carBody);
+  rect(ctx, 0, roofH, w, h - roofH, bodyColor);
   // shadow under the bumper, so it sits on the road instead of floating
-  rect(ctx, 1, Math.round(h * 0.84), w - 2, Math.round(h * 0.1), 0x1b1e22);
+  rect(ctx, 1, h - Math.round(h * 0.12), w - 2, Math.round(h * 0.12), 0x1b1e22);
+
+  if (style === "estate") {
+    // roof rails — a pair of thin lines along the top
+    rect(ctx, roofInset + 3, 1, w - roofInset * 2 - 6, 1, 0x1c1f23);
+  }
 
   // tail lights, with a soft bloom either side
-  const lightY = Math.round(h * 0.45);
+  const lightY = Math.round(h * (style === "van" ? 0.58 : 0.48));
   rect(ctx, 2, lightY, lightW, lightH, C.tailLight);
   rect(ctx, w - 2 - lightW, lightY, lightW, lightH, C.tailLight);
   rect(ctx, 1, lightY + lightH, lightW + 2, 1, C.tailGlow);
@@ -108,11 +175,12 @@ function drawCarRear(ctx: CanvasRenderingContext2D, w: number, h: number): void 
 
   // plate
   const plateW = Math.max(6, Math.round(w * 0.3));
-  rect(ctx, Math.round((w - plateW) / 2), Math.round(h * 0.66), plateW, Math.max(2, lightH - 1), C.plate);
+  const plateY = style === "van" ? h - Math.round(h * 0.28) : Math.round(h * 0.68);
+  rect(ctx, Math.round((w - plateW) / 2), plateY, plateW, Math.max(2, lightH - 1), C.plate);
 }
 
 export function generateMotorwayTextures(scene: Phaser.Scene): void {
-  draw(scene, MwTex.BACKDROP, (ctx, w, h) => {
+  draw(scene, MwTex.BACKDROP, GAME_WIDTH, GAME_HEIGHT, (ctx, w, h) => {
     // sky, banded rather than smooth so it stays in the pixel-art idiom
     rect(ctx, 0, 0, w, 40, C.skyHigh);
     rect(ctx, 0, 40, w, 30, 0x454e59);
@@ -140,31 +208,44 @@ export function generateMotorwayTextures(scene: Phaser.Scene): void {
       rect(ctx, px, 100, 2, 3 + i, C.barrierPost);
     }
 
-    // lane markings, spaced wider as they come toward us
-    let y = 100;
-    let gap = 5;
-    while (y < h) {
-      rect(ctx, Math.round(w * 0.5) - 1, y, 2 + Math.round(gap / 4), gap, C.laneMark);
-      y += gap * 3;
-      gap += 3;
+    // two dashed dividers splitting our carriageway into three lanes, so the
+    // queue of cars reads as three lanes of stopped traffic rather than a
+    // scatter — spaced wider as they come toward us, same as before
+    for (const baseX of [168, 312]) {
+      let y = 100;
+      let gap = 5;
+      while (y < h) {
+        const drift = Math.round(((baseX - 240) / 240) * (y - 100) * 0.06);
+        rect(ctx, baseX + drift - 1, y, 2 + Math.round(gap / 4), gap, C.laneMark);
+        y += gap * 3;
+        gap += 3;
+      }
+    }
+
+    // a smudge of queue continuing past the last modelled car, right at the
+    // horizon — sells "backed up as far as you can see" without needing more
+    // fully-modelled cars this close to the vanishing point
+    for (const dx of [82, 150, 210, 270, 330, 398]) {
+      rect(ctx, dx, 97 + ((dx * 13) % 3), 6, 3, C.distantCar);
     }
   });
 
-  draw(scene, MwTex.CAR_FAR, drawCarRear);
-  draw(scene, MwTex.CAR_MID, drawCarRear);
-  draw(scene, MwTex.CAR_NEAR, drawCarRear);
+  for (const car of QUEUE_CARS) {
+    const { body, roof } = CAR_COLORS[car.colorIndex % CAR_COLORS.length];
+    draw(scene, carTexKey(car.id), car.w, car.h, (ctx, w, h) => drawCarRear(ctx, w, h, car.style, body, roof));
+  }
 
-  draw(scene, MwTex.HEADLINER, (ctx, w, h) => {
+  draw(scene, MwTex.HEADLINER, GAME_WIDTH, 26, (ctx, w, h) => {
     rect(ctx, 0, 0, w, h, C.cabin);
     rect(ctx, 0, h - 3, w, 3, C.cabinLit); // trim catching the grey daylight
   });
 
-  draw(scene, MwTex.PILLAR, (ctx, w, h) => {
+  draw(scene, MwTex.PILLAR, 20, 146, (ctx, w, h) => {
     rect(ctx, 0, 0, w, h, C.cabin);
     rect(ctx, w - 2, 0, 2, h, C.cabinLit);
   });
 
-  draw(scene, MwTex.DASH, (ctx, w, h) => {
+  draw(scene, MwTex.DASH, GAME_WIDTH, 102, (ctx, w, h) => {
     rect(ctx, 0, 0, w, 14, C.dashTop); // top of the dash, lit from the glass
     rect(ctx, 0, 14, w, 2, C.dashSeam);
     rect(ctx, 0, 16, w, h - 16, C.dash);
@@ -186,7 +267,7 @@ export function generateMotorwayTextures(scene: Phaser.Scene): void {
     }
   });
 
-  draw(scene, MwTex.GLASS_GRIME, (ctx, w, h) => {
+  draw(scene, MwTex.GLASS_GRIME, GAME_WIDTH - 40, 142, (ctx, w, h) => {
     // faint smears and specks so the glass reads as a surface you're looking
     // through rather than an open hole in the front of the car
     ctx.globalAlpha = 0.05;
@@ -209,7 +290,7 @@ export function generateMotorwayTextures(scene: Phaser.Scene): void {
     ctx.globalAlpha = 1;
   });
 
-  draw(scene, MwTex.WHEEL, (ctx, w, h) => {
+  draw(scene, MwTex.WHEEL, 196, 104, (ctx, w, h) => {
     // an actual rim you can see the dash through, not a filled mass: the
     // ellipse is centred on the bottom edge so only its top half is on screen
     const cx = w / 2;
@@ -261,15 +342,15 @@ export function generateMotorwayTextures(scene: Phaser.Scene): void {
     rect(ctx, 4, h - 9, w - 8, 2, C.radioTrim);
     for (let i = 0; i < 5; i++) rect(ctx, 6 + i * 9, h - 7, 5, 4, C.knob);
   };
-  draw(scene, MwTex.RADIO_ON, radio(true));
-  draw(scene, MwTex.RADIO_OFF, radio(false));
+  draw(scene, MwTex.RADIO_ON, 56, 30, radio(true));
+  draw(scene, MwTex.RADIO_OFF, 56, 30, radio(false));
 
-  draw(scene, MwTex.WIPER, (ctx, w, h) => {
+  draw(scene, MwTex.WIPER, 4, 96, (ctx, w, h) => {
     rect(ctx, 0, 0, w, h, C.wiper);
     rect(ctx, 1, 0, 1, h, 0x2a2e33); // faint edge highlight along the blade
   });
 
-  draw(scene, MwTex.MIRROR, (ctx, w, h) => {
+  draw(scene, MwTex.MIRROR, 46, 15, (ctx, w, h) => {
     rect(ctx, Math.round(w / 2) - 2, 0, 4, 4, C.cabin); // stem up to the glass
     rect(ctx, 0, 3, w, h - 3, C.cabin);
     rect(ctx, 2, 5, w - 4, h - 8, C.mirrorGlass);

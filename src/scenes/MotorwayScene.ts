@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
 import { GAME_WIDTH, GAME_HEIGHT, PLAYER_NAME } from "@/config/constants";
-import { MwTex, GLASS } from "@/gfx/motorway";
+import { MwTex, GLASS, QUEUE_CARS, carTexKey } from "@/gfx/motorway";
 import { FxTex } from "@/gfx/fx";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
@@ -47,16 +47,6 @@ interface Hotspot {
   y: number;
 }
 
-/** Where the queue of cars sits — further up the screen reads as further away. */
-const CAR_LAYOUT: Array<{ tex: string; x: number; y: number; tint: number }> = [
-  { tex: MwTex.CAR_FAR, x: 176, y: 104, tint: 0x6d7580 },
-  { tex: MwTex.CAR_FAR, x: 292, y: 101, tint: 0x7a6a58 },
-  { tex: MwTex.CAR_FAR, x: 356, y: 106, tint: 0x5d6a72 },
-  { tex: MwTex.CAR_MID, x: 128, y: 120, tint: 0x8a8f96 },
-  { tex: MwTex.CAR_MID, x: 322, y: 124, tint: 0x6a5f7a },
-  { tex: MwTex.CAR_NEAR, x: 226, y: 146, tint: 0xffffff },
-  { tex: MwTex.CAR_NEAR, x: 372, y: 152, tint: 0x74808a },
-];
 
 export class MotorwayScene extends Phaser.Scene {
   private hotspots: Hotspot[] = [];
@@ -102,9 +92,8 @@ export class MotorwayScene extends Phaser.Scene {
 
     this.add.image(0, 0, MwTex.BACKDROP).setOrigin(0, 0).setDepth(DEPTH.BACKDROP);
 
-    for (const car of CAR_LAYOUT) {
-      const img = this.add.image(car.x, car.y, car.tex).setDepth(DEPTH.CAR + car.y / 100);
-      if (car.tint !== 0xffffff) img.setTint(car.tint);
+    for (const car of QUEUE_CARS) {
+      this.add.image(car.x, car.y, carTexKey(car.id)).setDepth(DEPTH.CAR + car.y / 100);
     }
     this.addBrakeLightGlow();
 
@@ -130,12 +119,14 @@ export class MotorwayScene extends Phaser.Scene {
     void this.openingBeat();
   }
 
-  /** The nearest cars ride their brakes, so their lights breathe rather than sit flat. */
+  /** The lead car in each lane rides its brakes, so its lights breathe rather than sit flat. */
   private addBrakeLightGlow(): void {
-    for (const car of CAR_LAYOUT.slice(-2)) {
-      for (const dx of [-22, 22]) {
-        const glow = this.add.rectangle(car.x + dx, car.y + 2, 9, 4, 0xff5a45, 0.5);
-        glow.setDepth(DEPTH.CAR + 1);
+    for (const car of QUEUE_CARS.filter((c) => c.brakeLit)) {
+      for (const dx of [-car.w * 0.36, car.w * 0.36]) {
+        const glow = this.add.rectangle(car.x + dx, car.y + car.h * 0.02, 9, 4, 0xff5a45, 0.5);
+        // above this car's own depth, not a flat DEPTH.CAR+1 — that sat below
+        // any car whose y put it past depth 6, hiding the glow behind it
+        glow.setDepth(DEPTH.CAR + car.y / 100 + 0.5);
         this.tweens.add({
           targets: glow,
           alpha: { from: 0.28, to: 0.72 },
