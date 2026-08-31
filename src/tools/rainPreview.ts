@@ -5,7 +5,18 @@
  */
 import { synthRain, type RainFlavor } from "@/core/audio/synth";
 
-const FLAVORS: Array<{ flavor: RainFlavor; name: string; blurb: string }> = [
+const FLAVORS: Array<{ flavor: RainFlavor; name: string; blurb: string; bedLevel?: number }> = [
+  {
+    flavor: "windscreen",
+    name: "On the glass",
+    blurb: "Dense drop patter over a bed turned right down. Mostly light ticks with fatter, slower drops mixed through.",
+  },
+  {
+    flavor: "windscreen",
+    name: "On the glass — drops only",
+    blurb: "The same patter with the bed almost gone. Compare against the one above and tell me which side of the two you want.",
+    bedLevel: 0.25,
+  },
   {
     flavor: "soft",
     name: "Soft / distant",
@@ -15,11 +26,6 @@ const FLAVORS: Array<{ flavor: RainFlavor; name: string; blurb: string }> = [
     flavor: "steady",
     name: "Steady downpour",
     blurb: "Fuller and wetter with real low-end weight, but still no hiss. For standing out in it.",
-  },
-  {
-    flavor: "windscreen",
-    name: "On the glass",
-    blurb: "The steady bed plus scattered individual drops striking the pane. For sitting inside the car.",
   },
 ];
 
@@ -34,10 +40,10 @@ function stop(): void {
   }
 }
 
-async function play(flavor: RainFlavor): Promise<void> {
+async function play(flavor: RainFlavor, bedLevel = 1): Promise<void> {
   stop();
   await ctx.resume();
-  const buffer = await synthRain(8, flavor);
+  const buffer = await synthRain(8, flavor, bedLevel);
   const source = ctx.createBufferSource();
   source.buffer = buffer;
   source.loop = true;
@@ -48,7 +54,7 @@ async function play(flavor: RainFlavor): Promise<void> {
 
 const root = document.getElementById("root")!;
 
-for (const { flavor, name, blurb } of FLAVORS) {
+for (const { flavor, name, blurb, bedLevel } of FLAVORS) {
   const card = document.createElement("section");
 
   const heading = document.createElement("h2");
@@ -59,7 +65,7 @@ for (const { flavor, name, blurb } of FLAVORS) {
 
   const button = document.createElement("button");
   button.textContent = `Play "${name}" on loop`;
-  button.addEventListener("click", () => void play(flavor));
+  button.addEventListener("click", () => void play(flavor, bedLevel));
 
   card.append(heading, description, button);
   root.appendChild(card);

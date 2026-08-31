@@ -165,7 +165,9 @@ export class MotorwayScene extends Phaser.Scene {
       callback: () => this.addDroplet(),
     });
 
-    AudioManager.startLoop("rain_glass", SfxKey.RAIN_GLASS, 0.5);
+    // the patter bed carries much less steady energy than the old hiss did, so
+    // it needs a higher playback level to sit in the same perceived place
+    AudioManager.startLoop("rain_glass", SfxKey.RAIN_GLASS, 0.7);
     AudioManager.startLoop("engine_idle", SfxKey.CAR_ENGINE, 0.1);
   }
 

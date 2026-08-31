@@ -211,8 +211,10 @@ const RAIN_FLAVORS: Record<RainFlavor, {
   soft: { topHz: 850, topGain: 0.13, bodyHz: 260, bodyGain: 0.1, drift: 0.35, drops: 0 },
   // out in it: fuller and wetter, still no sibilance
   steady: { topHz: 2000, topGain: 0.16, bodyHz: 380, bodyGain: 0.13, drift: 0.3, drops: 0 },
-  // rain striking glass right in front of you, with individual drops audible
-  windscreen: { topHz: 1500, topGain: 0.12, bodyHz: 300, bodyGain: 0.12, drift: 0.25, drops: 34 },
+  // rain striking glass right in front of you. The bed is deliberately way
+  // down on the other two — here the individual drops are the sound, and the
+  // noise underneath is only there to stop them reading as clicks in silence.
+  windscreen: { topHz: 1500, topGain: 0.045, bodyHz: 300, bodyGain: 0.05, drift: 0.25, drops: 170 },
 };
 
 /**
@@ -225,8 +227,14 @@ const RAIN_FLAVORS: Record<RainFlavor, {
  * The drift LFO runs at exactly one cycle per buffer so it starts and ends at
  * the same point and the loop seam stays inaudible.
  */
-export function synthRain(duration = 8, flavor: RainFlavor = "steady"): Promise<AudioBuffer> {
-  const cfg = RAIN_FLAVORS[flavor];
+export function synthRain(
+  duration = 8,
+  flavor: RainFlavor = "steady",
+  /** Scales the noise bed without touching the drops, for dialling in the mix. */
+  bedLevel = 1,
+): Promise<AudioBuffer> {
+  const base = RAIN_FLAVORS[flavor];
+  const cfg = { ...base, topGain: base.topGain * bedLevel, bodyGain: base.bodyGain * bedLevel };
   return render(duration, (ctx) => {
     const bed = ctx.createBufferSource();
     bed.buffer = whiteNoiseBuffer(ctx, duration);
@@ -258,22 +266,39 @@ export function synthRain(duration = 8, flavor: RainFlavor = "steady"): Promise<
     body.connect(bodyFilter).connect(bodyGain).connect(ctx.destination);
     body.start(0);
 
-    // scattered individual drops striking the glass — this is what makes it
-    // read as rain hitting something rather than rain in the distance
+    // individual drops striking the glass — this is what makes it read as rain
+    // hitting something rather than rain in the distance. They're deliberately
+    // mixed: mostly light ticks, with roughly one in five a fatter, slower drop
+    // landing lower down, so a dense patter still sounds like weather rather
+    // than one sample retriggering.
     for (let i = 0; i < cfg.drops; i++) {
-      const at = Math.random() * (duration - 0.06);
+      const heavy = Math.random() < 0.18;
+      const decay = heavy ? 0.09 + Math.random() * 0.05 : 0.022 + Math.random() * 0.03;
+      const at = Math.random() * (duration - decay - 0.02);
+
       const drop = ctx.createBufferSource();
-      drop.buffer = whiteNoiseBuffer(ctx, 0.05);
+      drop.buffer = whiteNoiseBuffer(ctx, decay + 0.02);
       const dropFilter = ctx.createBiquadFilter();
       dropFilter.type = "bandpass";
-      dropFilter.frequency.setValueAtTime(900 + Math.random() * 1400, 0);
-      dropFilter.Q.setValueAtTime(3, 0);
+      dropFilter.frequency.setValueAtTime(
+        heavy ? 380 + Math.random() * 420 : 1100 + Math.random() * 1700,
+        0,
+      );
+      dropFilter.Q.setValueAtTime(heavy ? 2.5 : 4.5, 0);
+
+      // gains look high next to the bed's, but a narrow bandpass throws away
+      // most of a noise burst's energy — these are pre-filter values, and the
+      // drops land far quieter than the numbers suggest
       const dropGain = ctx.createGain();
-      dropGain.gain.setValueAtTime(0.05 + Math.random() * 0.07, at);
-      dropGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.045);
+      dropGain.gain.setValueAtTime(
+        heavy ? 0.42 + Math.random() * 0.28 : 0.18 + Math.random() * 0.22,
+        at,
+      );
+      dropGain.gain.exponentialRampToValueAtTime(0.0001, at + decay);
+
       drop.connect(dropFilter).connect(dropGain).connect(ctx.destination);
       drop.start(at);
-      drop.stop(at + 0.05);
+      drop.stop(at + decay + 0.02);
     }
   });
 }
