@@ -1,26 +1,60 @@
 import { EventBus, Events } from "@/core/EventBus";
 
+export interface Objective {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
+export interface ObjectiveState {
+  title: string;
+  objectives: Objective[];
+}
+
 /**
- * Minimal quest/objective tracker. Today it's just a single line of
- * guidance text the HUD displays ("Get ready for work"). The API is
- * intentionally already shaped like a short queue so a real quest system
- * (multiple concurrent objectives, completion checks, rewards) can grow
- * out of this without a rewrite.
+ * Tracks the player's current checklist of objectives. Objective ids are the
+ * same STORY_FLAGS strings the save file uses, so a checklist can always be
+ * rebuilt from a loaded save rather than being state that drifts from it.
+ *
+ * Scenes ask `allComplete()` before letting the story move on — that's what
+ * stops the player driving off before the morning routine is actually done.
  */
 class ObjectiveManagerClass {
-  private current = "";
+  private title = "";
+  private objectives: Objective[] = [];
 
-  set(text: string): void {
-    this.current = text;
-    EventBus.emit(Events.OBJECTIVE_SET, text);
+  /** Starts a checklist. `doneIds` pre-ticks entries, for resuming a save. */
+  start(title: string, entries: Array<{ id: string; label: string }>, doneIds: string[] = []): void {
+    this.title = title;
+    this.objectives = entries.map((e) => ({ ...e, done: doneIds.includes(e.id) }));
+    this.emit();
   }
 
-  get(): string {
-    return this.current;
+  complete(id: string): void {
+    const objective = this.objectives.find((o) => o.id === id);
+    if (!objective || objective.done) return;
+    objective.done = true;
+    this.emit();
+  }
+
+  /** Still-outstanding objectives, in checklist order. */
+  remaining(): Objective[] {
+    return this.objectives.filter((o) => !o.done);
+  }
+
+  allComplete(): boolean {
+    return this.objectives.length > 0 && this.objectives.every((o) => o.done);
   }
 
   clear(): void {
-    this.set("");
+    this.title = "";
+    this.objectives = [];
+    this.emit();
+  }
+
+  private emit(): void {
+    const state: ObjectiveState = { title: this.title, objectives: this.objectives.map((o) => ({ ...o })) };
+    EventBus.emit(Events.OBJECTIVE_SET, state);
   }
 }
 

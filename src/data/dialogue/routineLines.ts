@@ -71,6 +71,13 @@ export const SHOWER_OFF_LINES: DialogueScript = [
   { speaker: PLAYER_NAME, text: "...Guess it's been dripping all night." },
 ];
 
+/** Said when the player tries to drive off with the morning routine unfinished. */
+export function carNotReadyLines(nextTask: string): DialogueScript {
+  return [
+    { speaker: PLAYER_NAME, text: `Hand on the door, and — no. ${nextTask} first. Then work.` },
+  ];
+}
+
 export const DOOR_LOCKED_HINTS: Record<string, DialogueScript> = {
   dressed: [{ speaker: PLAYER_NAME, text: "Not like this. Let's get dressed first." }],
   washedUp: [{ speaker: PLAYER_NAME, text: "I should wash up before I go." }],

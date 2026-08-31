@@ -13,6 +13,7 @@ export const SfxKey = {
   TV_HUM: "sfx_tv_hum",
   TV_OFF: "sfx_tv_off",
   RAIN: "sfx_rain",
+  RAIN_GLASS: "sfx_rain_glass",
   WIND: "sfx_wind",
   DRIP: "sfx_drip",
 } as const;
@@ -54,7 +55,8 @@ class AudioManagerClass {
       [SfxKey.CAR_ENGINE, synth.synthCarEngine()],
       [SfxKey.TV_HUM, synth.synthTVHum(2.5)],
       [SfxKey.TV_OFF, synth.synthTVOff()],
-      [SfxKey.RAIN, synth.synthRain(4)],
+      [SfxKey.RAIN, synth.synthRain(8, "steady")],
+      [SfxKey.RAIN_GLASS, synth.synthRain(8, "windscreen")],
       [SfxKey.WIND, synth.synthWind(6)],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],

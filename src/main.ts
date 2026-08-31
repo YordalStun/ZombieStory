@@ -6,6 +6,7 @@ import { BootScene } from "@/scenes/BootScene";
 import { PreloadScene } from "@/scenes/PreloadScene";
 import { MainMenuScene } from "@/scenes/MainMenuScene";
 import { ApartmentScene } from "@/scenes/ApartmentScene";
+import { MotorwayScene } from "@/scenes/MotorwayScene";
 import { initUIRoot, syncViewport } from "@/ui/dom/UIRoot";
 import { initDialogueBoxUI } from "@/ui/dom/DialogueBoxUI";
 import { initHUDUI } from "@/ui/dom/HUDUI";
@@ -30,7 +31,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: "arcade",
     arcade: { debug: false },
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, ApartmentScene],
+  scene: [BootScene, PreloadScene, MainMenuScene, ApartmentScene, MotorwayScene],
 };
 
 const game = new Phaser.Game(config);

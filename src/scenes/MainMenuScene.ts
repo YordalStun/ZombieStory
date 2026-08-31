@@ -45,6 +45,10 @@ export class MainMenuScene extends Phaser.Scene {
     await fadeOut(700);
     hideMenu();
     AudioManager.stopMusic(300);
+    if (checkpoint === "MOTORWAY") {
+      this.scene.start(SceneKeys.MOTORWAY);
+      return;
+    }
     this.scene.start(SceneKeys.APARTMENT, { checkpoint });
   }
 }

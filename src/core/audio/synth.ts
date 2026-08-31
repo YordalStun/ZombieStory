@@ -197,28 +197,84 @@ export function synthTVOff(): Promise<AudioBuffer> {
   });
 }
 
-export function synthRain(duration = 4): Promise<AudioBuffer> {
+export type RainFlavor = "soft" | "steady" | "windscreen";
+
+const RAIN_FLAVORS: Record<RainFlavor, {
+  topHz: number;
+  topGain: number;
+  bodyHz: number;
+  bodyGain: number;
+  drift: number;
+  drops: number;
+}> = {
+  // heard through a wall or window — muffled, no top end
+  soft: { topHz: 850, topGain: 0.13, bodyHz: 260, bodyGain: 0.1, drift: 0.35, drops: 0 },
+  // out in it: fuller and wetter, still no sibilance
+  steady: { topHz: 2000, topGain: 0.16, bodyHz: 380, bodyGain: 0.13, drift: 0.3, drops: 0 },
+  // rain striking glass right in front of you, with individual drops audible
+  windscreen: { topHz: 1500, topGain: 0.12, bodyHz: 300, bodyGain: 0.12, drift: 0.25, drops: 34 },
+};
+
+/**
+ * Rain beds. The first version leaned on a bright bandpass hiss, which read
+ * as a harsh "sssss" and got grating fast under a permanent loop. These use
+ * lowpassed noise instead (a soft "shhh"), sit on a low rumble so there's
+ * weight rather than only air, and drift slowly in level so the bed breathes
+ * — a dead-static noise loop is most of what makes synthetic rain annoying.
+ *
+ * The drift LFO runs at exactly one cycle per buffer so it starts and ends at
+ * the same point and the loop seam stays inaudible.
+ */
+export function synthRain(duration = 8, flavor: RainFlavor = "steady"): Promise<AudioBuffer> {
+  const cfg = RAIN_FLAVORS[flavor];
   return render(duration, (ctx) => {
-    const hiss = ctx.createBufferSource();
-    hiss.buffer = whiteNoiseBuffer(ctx, duration);
-    const hissFilter = ctx.createBiquadFilter();
-    hissFilter.type = "bandpass";
-    hissFilter.frequency.setValueAtTime(3400, 0);
-    hissFilter.Q.setValueAtTime(0.5, 0);
-    const hissGain = ctx.createGain();
-    hissGain.gain.setValueAtTime(0.22, 0);
-    hiss.connect(hissFilter).connect(hissGain).connect(ctx.destination);
-    hiss.start(0);
+    const bed = ctx.createBufferSource();
+    bed.buffer = whiteNoiseBuffer(ctx, duration);
+    const bedFilter = ctx.createBiquadFilter();
+    bedFilter.type = "lowpass";
+    bedFilter.frequency.setValueAtTime(cfg.topHz, 0);
+    const bedGain = ctx.createGain();
+    bedGain.gain.setValueAtTime(cfg.topGain, 0);
+
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.setValueAtTime(1 / duration, 0);
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.setValueAtTime(cfg.topGain * cfg.drift, 0);
+    lfo.connect(lfoDepth).connect(bedGain.gain);
+    lfo.start(0);
+    lfo.stop(duration);
+
+    bed.connect(bedFilter).connect(bedGain).connect(ctx.destination);
+    bed.start(0);
 
     const body = ctx.createBufferSource();
     body.buffer = whiteNoiseBuffer(ctx, duration);
     const bodyFilter = ctx.createBiquadFilter();
     bodyFilter.type = "lowpass";
-    bodyFilter.frequency.setValueAtTime(500, 0);
+    bodyFilter.frequency.setValueAtTime(cfg.bodyHz, 0);
     const bodyGain = ctx.createGain();
-    bodyGain.gain.setValueAtTime(0.13, 0);
+    bodyGain.gain.setValueAtTime(cfg.bodyGain, 0);
     body.connect(bodyFilter).connect(bodyGain).connect(ctx.destination);
     body.start(0);
+
+    // scattered individual drops striking the glass — this is what makes it
+    // read as rain hitting something rather than rain in the distance
+    for (let i = 0; i < cfg.drops; i++) {
+      const at = Math.random() * (duration - 0.06);
+      const drop = ctx.createBufferSource();
+      drop.buffer = whiteNoiseBuffer(ctx, 0.05);
+      const dropFilter = ctx.createBiquadFilter();
+      dropFilter.type = "bandpass";
+      dropFilter.frequency.setValueAtTime(900 + Math.random() * 1400, 0);
+      dropFilter.Q.setValueAtTime(3, 0);
+      const dropGain = ctx.createGain();
+      dropGain.gain.setValueAtTime(0.05 + Math.random() * 0.07, at);
+      dropGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.045);
+      drop.connect(dropFilter).connect(dropGain).connect(ctx.destination);
+      drop.start(at);
+      drop.stop(at + 0.05);
+    }
   });
 }
 

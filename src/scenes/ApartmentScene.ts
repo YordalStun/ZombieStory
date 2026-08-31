@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
-import { TILE_SIZE, DEPTH, PLAYER_NAME, STORY_FLAGS, type Checkpoint } from "@/config/constants";
+import { TILE_SIZE, DEPTH, STORY_FLAGS, type Checkpoint } from "@/config/constants";
 import { TILESET_KEY, TILE, WALL_TILE_INDICES } from "@/gfx/tileset";
 import { PropTex } from "@/gfx/props";
 import {
@@ -30,6 +30,7 @@ import {
   TV_MORNING_OFF_LINES,
   TV_MORNING_ON_LINES,
   KEYS_LINES,
+  carNotReadyLines,
   FRONT_DOOR_LINES,
   CAR_ENTER_LINES,
   PICTURE_LINES,
@@ -45,9 +46,16 @@ import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
-import { showEndSlate, hideMenu } from "@/ui/dom/MenuUI";
 
 const DOG_PET_RANGE = 24;
+
+/** Ids are STORY_FLAGS values so the checklist maps straight onto the save file. */
+const MORNING_OBJECTIVES = [
+  { id: STORY_FLAGS.DRESSED, label: "Get dressed" },
+  { id: STORY_FLAGS.WASHED_UP, label: "Wash up" },
+  { id: STORY_FLAGS.ATE, label: "Eat something" },
+  { id: STORY_FLAGS.GRABBED_KEYS, label: "Grab your keys" },
+];
 
 interface PropEntry {
   spec: PropSpec;
@@ -301,8 +309,16 @@ export class ApartmentScene extends Phaser.Scene {
   private beginMorningFree(): void {
     this.player.setControlsEnabled(true);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
-    ObjectiveManager.set("Get ready for work.");
     SaveManager.saveCheckpoint("MORNING_ROUTINE");
+
+    // rebuilt from the save's flags rather than tracked separately, so a
+    // resumed game shows exactly what it already has and hasn't done
+    const flags = SaveManager.loadProgress()?.flags ?? {};
+    ObjectiveManager.start(
+      "Get ready for work",
+      MORNING_OBJECTIVES,
+      MORNING_OBJECTIVES.map((o) => o.id).filter((id) => flags[id]),
+    );
   }
 
   private wait(ms: number): Promise<void> {
@@ -620,6 +636,7 @@ export class ApartmentScene extends Phaser.Scene {
     }
     await this.playLinesBlocking(lines.first);
     SaveManager.setFlag(flag, true);
+    ObjectiveManager.complete(flag);
     onFirst?.();
   }
 
@@ -638,11 +655,19 @@ export class ApartmentScene extends Phaser.Scene {
     await this.playLinesBlocking(KEYS_LINES);
     if (!SaveManager.loadProgress()?.flags[STORY_FLAGS.GRABBED_KEYS]) {
       SaveManager.setFlag(STORY_FLAGS.GRABBED_KEYS, true);
-      ObjectiveManager.set("Head out to the car.");
+      ObjectiveManager.complete(STORY_FLAGS.GRABBED_KEYS);
     }
   }
 
   private async interactCar(): Promise<void> {
+    // the car is the point of no return, so it checks the checklist itself
+    // rather than trusting the front door to have been the only way out
+    const outstanding = ObjectiveManager.remaining();
+    if (outstanding.length > 0) {
+      await this.playLinesBlocking(carNotReadyLines(outstanding[0].label));
+      return;
+    }
+
     this.player.setControlsEnabled(false);
     EventBus.emit(Events.PROMPT_HIDE);
     ObjectiveManager.clear();
@@ -676,16 +701,7 @@ export class ApartmentScene extends Phaser.Scene {
     }
 
     await fadeOut(1200);
-    showEndSlate(
-      "TO BE CONTINUED",
-      `${PLAYER_NAME} pulls out of the driveway. The radio's already talking about road closures.`,
-    );
-    // the fade-layer sits above the menu-layer (it has to, to cover the canvas too),
-    // so it has to be lifted again or the end slate it just drew is invisible under it
-    await fadeIn(600);
-    await this.wait(2800);
-
-    hideMenu();
-    this.scene.start(SceneKeys.MAIN_MENU);
+    await this.wait(900); // a beat of black before the motorway fades up
+    this.scene.start(SceneKeys.MOTORWAY);
   }
 }

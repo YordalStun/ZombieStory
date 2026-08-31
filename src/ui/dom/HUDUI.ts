@@ -1,4 +1,5 @@
 import { EventBus, Events } from "@/core/EventBus";
+import type { ObjectiveState } from "@/core/managers/ObjectiveManager";
 
 export interface PromptShowPayload {
   text: string;
@@ -19,9 +20,31 @@ export function initHUDUI(): void {
 
   setHudVisible(false);
 
-  EventBus.on(Events.OBJECTIVE_SET, (text: string) => {
-    objectiveEl.textContent = text;
-    objectiveEl.classList.toggle("hidden", !text);
+  EventBus.on(Events.OBJECTIVE_SET, (state: ObjectiveState) => {
+    objectiveEl.replaceChildren();
+    const empty = !state.title && state.objectives.length === 0;
+    objectiveEl.classList.toggle("hidden", empty);
+    if (empty) return;
+
+    if (state.title) {
+      const title = document.createElement("div");
+      title.className = "objective-title";
+      title.textContent = state.title;
+      objectiveEl.appendChild(title);
+    }
+
+    if (state.objectives.length > 0) {
+      const list = document.createElement("ul");
+      list.className = "objective-list";
+      for (const objective of state.objectives) {
+        const item = document.createElement("li");
+        item.classList.toggle("done", objective.done);
+        // the box is content, not decoration — it's the completion state
+        item.textContent = `${objective.done ? "[x]" : "[ ]"} ${objective.label}`;
+        list.appendChild(item);
+      }
+      objectiveEl.appendChild(list);
+    }
   });
 
   EventBus.on(Events.LIGHT_LEVEL, (level: number) => {

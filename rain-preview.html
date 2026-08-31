@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rain bed preview — Zombie Story</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #14161a;
+        color: #e8e4da;
+        font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+        line-height: 1.5;
+      }
+      #root {
+        max-width: 620px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 8px;
+      }
+      .lede {
+        color: #9a958a;
+        margin: 0 0 8px;
+      }
+      section {
+        border: 1px solid #2e3238;
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0;
+        color: #ffd15c;
+      }
+      p {
+        margin: 0;
+        color: #b8b2a4;
+        font-size: 14px;
+      }
+      button {
+        font: inherit;
+        font-size: 14px;
+        color: #e8e4da;
+        background: #22262c;
+        border: 1px solid #3a3f47;
+        padding: 9px 14px;
+        cursor: pointer;
+        align-self: flex-start;
+      }
+      button:hover {
+        border-color: #ffd15c;
+      }
+      button:focus-visible {
+        outline: 2px solid #ffd15c;
+        outline-offset: 2px;
+      }
+      button.stop {
+        align-self: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Rain bed preview</h1>
+    <p class="lede">
+      Three candidate rain loops. Each plays looped so you can hear whether it wears on you.
+    </p>
+    <div id="root"></div>
+    <script type="module" src="/src/tools/rainPreview.ts"></script>
+  </body>
+</html>

@@ -94,7 +94,10 @@ export function buildApartmentLevel(): ApartmentLevel {
   grid.set(5, 2, TILE.WINDOW_NIGHT);
   grid.set(24, 3, TILE.WINDOW_DAY); // kitchen window, above the kitchen sink, facing the driveway — always daytime glass, this level never shows it at night
 
-  grid.fillRect(24, 4, 16, 3, TILE.DRIVEWAY);
+  // starts at column 25, OUTSIDE the kitchen's east wall (column 24) — starting
+  // it at 24 painted walkable driveway over the wall at row 4, leaving an
+  // unblocked hole beside the door that let the player skip the whole routine
+  grid.fillRect(25, 4, 15, 3, TILE.DRIVEWAY);
   grid.fillRect(30, 2, 10, 11, TILE.DRIVEWAY);
 
   const props: PropSpec[] = [];
