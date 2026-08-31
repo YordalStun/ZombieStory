@@ -14,7 +14,7 @@ recordings from the original authors.
 - **Kenney** (kenney.nl) — Interface Sounds, RPG Audio, Impact Sounds, Digital
   Audio packs.
   Used for: `sfx_ui_click`, `sfx_ui_hover`, `sfx_footstep`, `sfx_interact`,
-  `sfx_door`, `sfx_tv_off`, `sfx_bang`.
+  `sfx_door`, `sfx_tv_off`, `sfx_bang`, `sfx_elevator_ding`.
 - **qubodup / OpenGameArt** — ["Rain (loopable)"](https://opengameart.org/content/rain-loopable).
   Used for: `sfx_rain`, `sfx_rain_glass`.
 - **OpenGameArt contributor** — ["wind1"](https://opengameart.org/content/wind1).

@@ -12,10 +12,12 @@ export const TILE = {
   GRASS: 7,
   WINDOW_NIGHT: 8,
   WINDOW_DAY: 9,
+  FLOOR_CARPET_OFFICE: 10,
+  FLOOR_CARPET_OFFICE_B: 11,
 } as const;
 
 export const TILESET_KEY = "tileset";
-export const TILE_COUNT = 10;
+export const TILE_COUNT = 12;
 
 export const WALL_TILE_INDICES = [
   TILE.WALL,
@@ -65,6 +67,19 @@ function drawGrass(ctx: CanvasRenderingContext2D, ox: number): void {
   speckle(ctx, ox, 0, T, T, Palette.grassDark, 14, ox + 7);
 }
 
+// commercial loop-pile carpet tile — a warmer, more saturated blue than
+// plain lino/concrete would be, with a dense fleck for the pile texture
+// plus a faint diagonal weave so it doesn't read as flat/smooth, and a
+// seam every tile so a big open floor doesn't look like one slab
+function drawFloorCarpetOffice(ctx: CanvasRenderingContext2D, ox: number, variant: boolean): void {
+  const base = variant ? 0x3d4f66 : 0x445972;
+  rect(ctx, ox, 0, T, T, base);
+  speckle(ctx, ox, 0, T, T, variant ? 0x354162 : 0x4c6488, 26, ox + 4);
+  speckle(ctx, ox, 0, T, T, 0x2f3d52, 18, ox + 11);
+  rect(ctx, ox, 0, T, 1, 0x2c3a4d);
+  rect(ctx, ox, 0, 1, T, 0x2c3a4d);
+}
+
 function drawWindowWall(ctx: CanvasRenderingContext2D, ox: number, day: boolean): void {
   rect(ctx, ox, 0, T, T, Palette.wall);
   rect(ctx, ox, 0, T, 3, Palette.wallTrim);
@@ -92,6 +107,8 @@ export function generateTileset(scene: Phaser.Scene): void {
   drawGrass(ctx, TILE.GRASS * T);
   drawWindowWall(ctx, TILE.WINDOW_NIGHT * T, false);
   drawWindowWall(ctx, TILE.WINDOW_DAY * T, true);
+  drawFloorCarpetOffice(ctx, TILE.FLOOR_CARPET_OFFICE * T, false);
+  drawFloorCarpetOffice(ctx, TILE.FLOOR_CARPET_OFFICE_B * T, true);
 
   tex.refresh();
 }

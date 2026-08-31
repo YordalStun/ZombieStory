@@ -37,10 +37,11 @@ export const STORY_FLAGS = {
   ENTERED_CAR: "enteredCar",
 } as const;
 
-export type Checkpoint = "NIGHT_CUTSCENE" | "MORNING_ROUTINE" | "MOTORWAY";
+export type Checkpoint = "NIGHT_CUTSCENE" | "MORNING_ROUTINE" | "MOTORWAY" | "OFFICE";
 
 export const CHECKPOINTS: Record<Checkpoint, Checkpoint> = {
   NIGHT_CUTSCENE: "NIGHT_CUTSCENE",
   MORNING_ROUTINE: "MORNING_ROUTINE",
   MOTORWAY: "MOTORWAY",
+  OFFICE: "OFFICE",
 };

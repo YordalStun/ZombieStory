@@ -483,15 +483,12 @@ export class MotorwayScene extends Phaser.Scene {
     await this.say(MOTORWAY_ENDING_LINES);
 
     await fadeOut(1400);
-    showEndSlate(
-      "TO BE CONTINUED",
-      `${PLAYER_NAME} is nine miles from work, and something is walking between the cars.`,
-    );
+    showEndSlate("NINE MILES LATER", `The car park's half-empty. ${PLAYER_NAME} still has to go inside.`);
     await fadeIn(600);
     await this.wait(3200);
 
     hideMenu();
-    this.scene.start(SceneKeys.MAIN_MENU);
+    this.scene.start(SceneKeys.OFFICE);
   }
 
   private wait(ms: number): Promise<void> {

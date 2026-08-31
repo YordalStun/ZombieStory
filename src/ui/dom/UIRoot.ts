@@ -64,8 +64,10 @@ export function worldToScreen(
   worldX: number,
   worldY: number,
 ): { x: number; y: number } {
+  // zoom defaults to 1 everywhere except OfficeScene, so this is a no-op
+  // for every other scene's existing math
   return {
-    x: (worldX - camera.scrollX) * currentScale,
-    y: (worldY - camera.scrollY) * currentScale,
+    x: (worldX - camera.scrollX) * camera.zoom * currentScale,
+    y: (worldY - camera.scrollY) * camera.zoom * currentScale,
   };
 }

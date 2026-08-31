@@ -49,6 +49,10 @@ export class MainMenuScene extends Phaser.Scene {
       this.scene.start(SceneKeys.MOTORWAY);
       return;
     }
+    if (checkpoint === "OFFICE") {
+      this.scene.start(SceneKeys.OFFICE);
+      return;
+    }
     this.scene.start(SceneKeys.APARTMENT, { checkpoint });
   }
 }

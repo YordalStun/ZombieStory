@@ -8,6 +8,8 @@ import { generateFxTextures } from "@/gfx/fx";
 import { generateMotorwayTextures } from "@/gfx/motorway";
 import { generateFigureTextures } from "@/gfx/zombieFigure";
 import { generateDogTextures, createDogAnimations } from "@/gfx/dogSpriteGen";
+import { generateOfficeTextures } from "@/gfx/office";
+import { generateCoworkerTextures } from "@/gfx/coworkerFigure";
 import { AudioManager } from "@/core/managers/AudioManager";
 import { showLoading, hideMenu } from "@/ui/dom/MenuUI";
 
@@ -32,6 +34,8 @@ export class PreloadScene extends Phaser.Scene {
     generateMotorwayTextures(this);
     generateFigureTextures(this);
     generateDogTextures(this);
+    generateOfficeTextures(this);
+    generateCoworkerTextures(this);
     createPlayerAnimations(this);
     createDogAnimations(this);
 

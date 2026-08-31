@@ -437,3 +437,36 @@ export function synthPad(duration: number, freqs: number[], volume: number): Pro
 
 export const MENU_THEME_FREQS = [220, 261.63, 329.63, 440];
 export const TENSION_BED_FREQS = [55, 58.27, 82.41];
+
+/** Classic two-tone lift chime — a falling major third, each note with a bell-like decay. */
+export function synthElevatorDing(): Promise<AudioBuffer> {
+  const duration = 1.3;
+  return render(duration, (ctx) => {
+    const notes: Array<[freq: number, start: number]> = [
+      [1046.5, 0], // C6
+      [830.6, 0.22], // Ab5
+    ];
+    for (const [freq, start] of notes) {
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.9);
+      gain.connect(ctx.destination);
+
+      for (const [mult, amp] of [
+        [1, 1],
+        [2.01, 0.25],
+        [3.03, 0.1],
+      ] as const) {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq * mult, start);
+        const partialGain = ctx.createGain();
+        partialGain.gain.setValueAtTime(amp, 0);
+        osc.connect(partialGain).connect(gain);
+        osc.start(start);
+        osc.stop(Math.min(duration, start + 0.95));
+      }
+    }
+  });
+}

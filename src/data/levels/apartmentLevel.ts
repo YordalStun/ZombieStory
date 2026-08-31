@@ -34,6 +34,10 @@ export interface PropSpec {
    *  a doorway panel where the whole sprite should block, not just a thin
    *  strip at its base. */
   fullBody?: boolean;
+  /** Mirrors a shared texture — e.g. a cubicle's partition corner, to get
+   *  differently-oriented desks out of one drawn asset. */
+  flipX?: boolean;
+  flipY?: boolean;
 }
 
 function tileCenter(tx: number, ty: number): { x: number; y: number } {
