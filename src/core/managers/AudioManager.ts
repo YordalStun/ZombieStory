@@ -56,7 +56,9 @@ class AudioManagerClass {
       [SfxKey.TV_HUM, synth.synthTVHum(2.5)],
       [SfxKey.TV_OFF, synth.synthTVOff()],
       [SfxKey.RAIN, synth.synthRain(8, "steady")],
-      [SfxKey.RAIN_GLASS, synth.synthRain(8, "windscreen")],
+      // bed turned down to a quarter — picked over the fuller mix specifically
+      // because the drops read better without a hum competing under them
+      [SfxKey.RAIN_GLASS, synth.synthRain(8, "windscreen", 0.25)],
       [SfxKey.WIND, synth.synthWind(6)],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],
