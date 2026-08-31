@@ -8,7 +8,7 @@ export const PRIYA_LINES: DialogueScript = [
 ];
 
 export const MARK_LINES: DialogueScript = [
-  { speaker: "Mark", text: "Morning. Don't mind me, just pretending this report is more interesting than my phone." },
+  { speaker: "Mark", text: `Morning, ${PLAYER_NAME}. Don't mind me, just pretending this report is more interesting than my phone.` },
   { speaker: "Mark", text: "Nobody's said anything official. If it were actually bad, someone would've said something official." },
   { speaker: "Mark", text: "...Right?" },
 ];
@@ -19,9 +19,9 @@ export const GREG_LINES: DialogueScript = [
   { speaker: "Greg", text: "I'm sure it's fine. Everyone keeps saying it's fine." },
 ];
 
-export const ANNOYED_COWORKER_LINES: DialogueScript = [
-  { speaker: "Coworker", text: "Can everyone keep it down out there? Some of us are trying to hit a deadline." },
-  { speaker: "Coworker", text: "A deadline. On today of all days. I don't even know why I'm still doing this." },
+export const BEN_LINES: DialogueScript = [
+  { speaker: "Ben", text: "Can everyone keep it down out there? Some of us are trying to hit a deadline." },
+  { speaker: "Ben", text: `A deadline, ${PLAYER_NAME}. On today of all days. I don't even know why I'm still doing this.` },
 ];
 
 export const SAM_LINES: DialogueScript = [
@@ -33,6 +33,29 @@ export const SAM_LINES: DialogueScript = [
 export const ELENA_LINES: DialogueScript = [
   { speaker: "Elena", text: "Meeting's cancelled. Both of them, actually." },
   { speaker: "Elena", text: "Nobody sent an email. People just... didn't show up, and then didn't come back." },
+];
+
+export const DANA_LINES: DialogueScript = [
+  { speaker: "Dana", text: `${PLAYER_NAME}! There you are.` },
+  { speaker: "Dana", text: "We started here the same week, remember? Feels like a hundred years ago now, not six." },
+  { speaker: "Dana", text: "You look how I feel. Which is to say: not great." },
+];
+
+export const OWEN_LINES: DialogueScript = [
+  { speaker: "Owen", text: "It just rings out. Every time. No voicemail, nothing." },
+  { speaker: "Owen", text: `Sorry — ${PLAYER_NAME}, hi. I'm trying my brother. Lines must be jammed, everyone's probably trying at once.` },
+  { speaker: "Owen", text: "Everyone's probably fine. That's — yeah. That's probably it." },
+];
+
+export const FATIMA_LINES: DialogueScript = [
+  { speaker: "Fatima", text: `${PLAYER_NAME}, good, you're in. Listen — I think people should be heading home, not sitting at their desks.` },
+  { speaker: "Fatima", text: "I've said it to three managers already. Got three different versions of 'let's not panic.'" },
+  { speaker: "Fatima", text: "I'm not panicking. I'm being sensible. There's a difference." },
+];
+
+export const CHRIS_LINES: DialogueScript = [
+  { speaker: "Chris", text: `Alright, ${PLAYER_NAME}. Bet you five quid the fire alarm's the next thing that goes off today.` },
+  { speaker: "Chris", text: "Gotta laugh, mate. What's the alternative." },
 ];
 
 export const PRINTER_LINES: DialogueScript = [
@@ -58,6 +81,15 @@ export const OFFICE_BROADCAST_LINES: DialogueScript = [
 
 export const TV_REPEAT_LINES: DialogueScript = [
   { speaker: PLAYER_NAME, text: "Same story, over and over, with less and less of it making sense." },
+];
+
+export const FIND_DESK_LINES: DialogueScript = [
+  { speaker: PLAYER_NAME, text: "I can't just stand here. I should get back to my desk. Try to think." },
+];
+
+export const AT_DESK_LINES: DialogueScript = [
+  { speaker: PLAYER_NAME, text: "Back at my desk. Same chair, same view of the partition wall." },
+  { speaker: PLAYER_NAME, text: "None of it feels like it means anything right now." },
 ];
 
 export const LOBBY_LINES: DialogueScript = [

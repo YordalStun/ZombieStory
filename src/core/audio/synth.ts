@@ -438,6 +438,51 @@ export function synthPad(duration: number, freqs: number[], volume: number): Pro
 export const MENU_THEME_FREQS = [220, 261.63, 329.63, 440];
 export const TENSION_BED_FREQS = [55, 58.27, 82.41];
 
+/** Soft office murmur bed plus scattered keyboard-clatter bursts — meant to loop under everything else, very low in the mix. */
+export function synthOfficeAmbience(duration = 10): Promise<AudioBuffer> {
+  return render(duration, (ctx) => {
+    // low, soft murmur — heavily low-passed noise, no intelligible words
+    const murmurSrc = ctx.createBufferSource();
+    murmurSrc.buffer = whiteNoiseBuffer(ctx, duration);
+    murmurSrc.loop = true;
+    const murmurFilter = ctx.createBiquadFilter();
+    murmurFilter.type = "bandpass";
+    murmurFilter.frequency.setValueAtTime(420, 0);
+    murmurFilter.Q.setValueAtTime(0.7, 0);
+    const murmurGain = ctx.createGain();
+    murmurGain.gain.setValueAtTime(0.05, 0);
+    murmurSrc.connect(murmurFilter).connect(murmurGain).connect(ctx.destination);
+    murmurSrc.start(0);
+
+    // a handful of short, randomly-spaced keyboard-clatter bursts
+    let seed = 771;
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return (seed % 10000) / 10000;
+    };
+    let t = 0.3;
+    while (t < duration - 0.5) {
+      const clickCount = 3 + Math.floor(rand() * 5);
+      for (let i = 0; i < clickCount; i++) {
+        const start = t + i * (0.05 + rand() * 0.05);
+        const src = ctx.createBufferSource();
+        src.buffer = whiteNoiseBuffer(ctx, 0.03);
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(2200 + rand() * 1200, start);
+        filter.Q.setValueAtTime(4, start);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.045, start + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.03);
+        src.connect(filter).connect(gain).connect(ctx.destination);
+        src.start(start);
+      }
+      t += 1.2 + rand() * 2.5;
+    }
+  });
+}
+
 /** Classic two-tone lift chime — a falling major third, each note with a bell-like decay. */
 export function synthElevatorDing(): Promise<AudioBuffer> {
   const duration = 1.3;

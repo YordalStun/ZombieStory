@@ -19,6 +19,7 @@ export const SfxKey = {
   BANG: "sfx_bang",
   GROAN: "sfx_groan",
   ELEVATOR_DING: "sfx_elevator_ding",
+  OFFICE_AMBIENCE: "sfx_office_ambience",
 } as const;
 
 export const MusicKey = {
@@ -48,6 +49,7 @@ const PACK_URLS: Partial<Record<string, string>> = {
   [SfxKey.BANG]: "audio/sfx/sfx_bang.wav",
   [SfxKey.GROAN]: "audio/sfx/sfx_groan.wav",
   [SfxKey.ELEVATOR_DING]: "audio/sfx/sfx_elevator_ding.wav",
+  [SfxKey.OFFICE_AMBIENCE]: "audio/sfx/sfx_office_ambience.ogg",
   [MusicKey.MENU]: "audio/music/music_menu.ogg",
 };
 
@@ -96,6 +98,7 @@ class AudioManagerClass {
       [SfxKey.BANG, synth.synthBang()],
       [SfxKey.GROAN, synth.synthGroan()],
       [SfxKey.ELEVATOR_DING, synth.synthElevatorDing()],
+      [SfxKey.OFFICE_AMBIENCE, synth.synthOfficeAmbience(10)],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],
     ];

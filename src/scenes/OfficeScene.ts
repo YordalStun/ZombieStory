@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
-import { TILE_SIZE, DEPTH, GAME_WIDTH } from "@/config/constants";
+import { TILE_SIZE, DEPTH, GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { TILESET_KEY, WALL_TILE_INDICES } from "@/gfx/tileset";
 import { OfficeTex } from "@/gfx/office";
 import { buildOfficeLevel, type OfficeLevel, type CoworkerSpec } from "@/data/levels/officeLevel";
@@ -9,20 +9,27 @@ import { Player, type MoveInput } from "@/core/entities/Player";
 import { LightingManager } from "@/core/managers/LightingManager";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
+import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
   PRIYA_LINES,
   MARK_LINES,
   GREG_LINES,
-  ANNOYED_COWORKER_LINES,
+  BEN_LINES,
   SAM_LINES,
   ELENA_LINES,
+  DANA_LINES,
+  OWEN_LINES,
+  FATIMA_LINES,
+  CHRIS_LINES,
   PRINTER_LINES,
   WATER_COOLER_LINES,
   OFFICE_BROADCAST_LINES,
   TV_REPEAT_LINES,
   LOBBY_LINES,
+  FIND_DESK_LINES,
+  AT_DESK_LINES,
 } from "@/data/dialogue/officeLines";
 import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
@@ -42,11 +49,17 @@ interface CoworkerEntry {
 const COWORKER_LINES: Record<string, DialogueScript> = {
   priya: PRIYA_LINES,
   mark: MARK_LINES,
-  annoyed: ANNOYED_COWORKER_LINES,
+  ben: BEN_LINES,
   sam: SAM_LINES,
   greg: GREG_LINES,
   elena: ELENA_LINES,
+  dana: DANA_LINES,
+  owen: OWEN_LINES,
+  fatima: FATIMA_LINES,
+  chris: CHRIS_LINES,
 };
+
+const ARROW_DEPTH = 99999;
 
 export class OfficeScene extends Phaser.Scene {
   private lighting!: LightingManager;
@@ -60,12 +73,16 @@ export class OfficeScene extends Phaser.Scene {
   private level!: OfficeLevel;
   private broadcastPlayed = false;
   private busy = true;
+  private findingDesk = false;
+  private deskArrow?: Phaser.GameObjects.Image;
 
   constructor() {
     super(SceneKeys.OFFICE);
   }
 
   init(): void {
+    this.findingDesk = false;
+    this.deskArrow = undefined;
     this.propsById.clear();
     this.coworkersById.clear();
     this.focusedInteractable = null;
@@ -118,6 +135,7 @@ export class OfficeScene extends Phaser.Scene {
       this.lighting.destroy();
       AudioManager.stopLoop("office_hum");
       EventBus.emit(Events.PROMPT_HIDE);
+      ObjectiveManager.clear();
     });
 
     void this.openingBeat(level);
@@ -176,6 +194,52 @@ export class OfficeScene extends Phaser.Scene {
       if (c.interactable) {
         this.coworkersById.set(c.id, { spec: c, sprite: img });
       }
+
+      // makes the floor feel occupied rather than staged — seated figures
+      // get a tiny typing bob, standing ones a weight-shift sway, each on
+      // its own random cycle so the room doesn't move in lockstep
+      const baseY = img.y;
+      const baseX = img.x;
+      if (c.seated) {
+        this.tweens.add({
+          targets: img,
+          y: baseY - 1,
+          duration: 380 + Math.random() * 260,
+          delay: Math.random() * 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      } else {
+        this.tweens.add({
+          targets: img,
+          x: baseX + (Math.random() < 0.5 ? -1 : 1),
+          duration: 900 + Math.random() * 700,
+          delay: Math.random() * 1200,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.easeInOut",
+        });
+      }
+    }
+
+    // a small pulsing glow over each occupied desk's monitor — the cubicle
+    // texture's own screen rect is static, this is what reads as "on"
+    for (const c of level.coworkers) {
+      if (!c.seated) continue;
+      const glow = this.add.image(c.x - 3, c.y - 8, OfficeTex.MONITOR_GLOW);
+      glow.setDepth(DEPTH.ACTOR_SORT_BASE + c.y + 0.5);
+      glow.setAlpha(0.7);
+      this.lighting.makeLit(glow);
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.45, to: 0.85 },
+        duration: 900 + Math.random() * 600,
+        delay: Math.random() * 800,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
     }
   }
 
@@ -224,7 +288,7 @@ export class OfficeScene extends Phaser.Scene {
     this.cameras.main.setZoom(1.8);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
     SaveManager.saveCheckpoint("OFFICE");
-    AudioManager.startLoop("office_hum", SfxKey.TV_HUM, 0.05);
+    AudioManager.startLoop("office_hum", SfxKey.OFFICE_AMBIENCE, 0.5);
 
     await fadeIn(1000);
     this.busy = false;
@@ -249,8 +313,33 @@ export class OfficeScene extends Phaser.Scene {
       void this.handleInteract(this.focusedInteractable);
     }
 
-    if (!this.broadcastPlayed && !DialoguePlayer.isActive() && this.player.y > this.level.breakRoomTriggerY) {
+    if (
+      !this.broadcastPlayed &&
+      !DialoguePlayer.isActive() &&
+      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.level.tvWorldPos.x, this.level.tvWorldPos.y) <
+        this.level.tvTriggerRadius
+    ) {
       void this.triggerBroadcast();
+    }
+
+    this.updateDeskArrow();
+  }
+
+  /** Points above the player's head toward Danny's own desk until he's back at it. */
+  private updateDeskArrow(): void {
+    if (!this.findingDesk || !this.deskArrow) return;
+    const target = this.level.playerDeskWorldPos;
+    const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, target.x, target.y);
+    const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, target.x, target.y);
+    this.deskArrow.setPosition(this.player.x, this.player.y - 22);
+    this.deskArrow.setRotation(angle);
+
+    if (dist < 30) {
+      this.findingDesk = false;
+      this.deskArrow.destroy();
+      this.deskArrow = undefined;
+      ObjectiveManager.complete("return_desk");
+      void this.playLinesBlocking(AT_DESK_LINES).then(() => ObjectiveManager.clear());
     }
   }
 
@@ -342,15 +431,53 @@ export class OfficeScene extends Phaser.Scene {
     }
   }
 
-  /** Fires once, whichever comes first — walking into range or interacting with the TV directly. */
+  /**
+   * Fires once, whichever comes first — walking into range or interacting
+   * with the TV directly. Cuts away to a close-up "on the screen" shot for
+   * the broadcast itself (same scrollFactor(0)-overlay technique as the
+   * elevator intro), then cuts back and hands the player a new goal.
+   */
   private async triggerBroadcast(): Promise<void> {
     if (this.broadcastPlayed) return;
     this.broadcastPlayed = true;
-    const wasEnabled = this.player.areControlsEnabled();
     this.player.setControlsEnabled(false);
     EventBus.emit(Events.PROMPT_HIDE);
+
+    // scrollFactor(0) only cancels scroll — the main camera's 1.8x world
+    // zoom still scales/clips it around the camera center, which crops off
+    // the outer ~22% of the texture on every edge (this is where the
+    // banner side-text and the live dot were disappearing to). Drop zoom
+    // to 1 for the duration of the cutaway so the full 480x270 image maps
+    // 1:1 onto the canvas, then restore it once we cut back to gameplay —
+    // both changes happen while the screen is faded to black.
+    const worldZoom = this.cameras.main.zoom;
+    await fadeOut(500);
+    this.cameras.main.setZoom(1);
+    const screen = this.add
+      .image(GAME_WIDTH / 2, GAME_HEIGHT / 2, OfficeTex.TV_BROADCAST_SCREEN)
+      .setScrollFactor(0)
+      .setDepth(100000);
+    await fadeIn(500);
+
     await DialoguePlayer.playAuto(OFFICE_BROADCAST_LINES);
-    if (wasEnabled) this.player.setControlsEnabled(true);
+
+    await fadeOut(500);
+    screen.destroy();
+    this.cameras.main.setZoom(worldZoom);
+    await fadeIn(500);
+
+    await this.beginFindDeskObjective();
+  }
+
+  private async beginFindDeskObjective(): Promise<void> {
+    EventBus.emit(Events.PROMPT_HIDE);
+    await DialoguePlayer.play(FIND_DESK_LINES);
+    this.player.setControlsEnabled(true);
+
+    ObjectiveManager.start("After the broadcast", [{ id: "return_desk", label: "Find your desk" }], []);
+    this.findingDesk = true;
+    this.deskArrow = this.add.image(this.player.x, this.player.y - 22, OfficeTex.DESK_ARROW).setDepth(ARROW_DEPTH);
+    this.lighting.makeLit(this.deskArrow);
   }
 
   private wait(ms: number): Promise<void> {
