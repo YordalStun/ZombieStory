@@ -16,6 +16,8 @@ export const SfxKey = {
   RAIN_GLASS: "sfx_rain_glass",
   WIND: "sfx_wind",
   DRIP: "sfx_drip",
+  BANG: "sfx_bang",
+  GROAN: "sfx_groan",
 } as const;
 
 export const MusicKey = {
@@ -60,6 +62,8 @@ class AudioManagerClass {
       // because the drops read better without a hum competing under them
       [SfxKey.RAIN_GLASS, synth.synthRain(8, "windscreen", 0.25)],
       [SfxKey.WIND, synth.synthWind(6)],
+      [SfxKey.BANG, synth.synthBang()],
+      [SfxKey.GROAN, synth.synthGroan()],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],
     ];

@@ -105,6 +105,9 @@ export interface QueueCarSpec {
  * backed-up queue instead of a handful of cars dropped on an empty road.
  * Positions are hand-placed (not randomised) so the scene is reproducible.
  */
+/** The car the zombie sequence targets — see QUEUE_CARS' "c0" entry. */
+export const ZOMBIE_TARGET_CAR_ID = "c0";
+
 export const QUEUE_CARS: QueueCarSpec[] = [
   // left lane
   { id: "a0", style: "hatch", colorIndex: 1, w: 56, h: 38, x: 90, y: 158, brakeLit: true },
@@ -120,7 +123,8 @@ export const QUEUE_CARS: QueueCarSpec[] = [
   { id: "b4", style: "sedan", colorIndex: 1, w: 15, h: 11, x: 232, y: 96, brakeLit: false },
 
   // right lane
-  { id: "c0", style: "sedan", colorIndex: 2, w: 54, h: 37, x: 380, y: 160, brakeLit: true },
+  // the red car — see ZOMBIE_TARGET_CAR_ID below
+  { id: "c0", style: "sedan", colorIndex: 3, w: 54, h: 37, x: 380, y: 160, brakeLit: true },
   { id: "c1", style: "van", colorIndex: 6, w: 37, h: 26, x: 392, y: 137, brakeLit: false },
   { id: "c2", style: "hatch", colorIndex: 3, w: 26, h: 18, x: 382, y: 119, brakeLit: false },
   { id: "c3", style: "estate", colorIndex: 0, w: 18, h: 13, x: 390, y: 104, brakeLit: false },

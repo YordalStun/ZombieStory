@@ -158,6 +158,82 @@ export function synthCarEngine(): Promise<AudioBuffer> {
   });
 }
 
+/** A fist hitting a car body/window — a low thump plus a sharp, brief knuckle-on-glass crack. */
+export function synthBang(): Promise<AudioBuffer> {
+  return render(0.22, (ctx) => {
+    const thump = ctx.createOscillator();
+    thump.type = "triangle";
+    thump.frequency.setValueAtTime(140, 0);
+    thump.frequency.exponentialRampToValueAtTime(60, 0.16);
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(0.001, 0);
+    thumpGain.gain.exponentialRampToValueAtTime(0.55, 0.012);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, 0.2);
+    thump.connect(thumpGain).connect(ctx.destination);
+    thump.start(0);
+    thump.stop(0.22);
+
+    const crack = ctx.createBufferSource();
+    crack.buffer = whiteNoiseBuffer(ctx, 0.05);
+    const crackFilter = ctx.createBiquadFilter();
+    crackFilter.type = "bandpass";
+    crackFilter.frequency.setValueAtTime(1800, 0);
+    crackFilter.Q.setValueAtTime(2.5, 0);
+    const crackGain = ctx.createGain();
+    crackGain.gain.setValueAtTime(0.35, 0);
+    crackGain.gain.exponentialRampToValueAtTime(0.0001, 0.045);
+    crack.connect(crackFilter).connect(crackGain).connect(ctx.destination);
+    crack.start(0);
+  });
+}
+
+/** A low, wavering, distorted groan — two close-detuned oscillators beating against each other. */
+export function synthGroan(): Promise<AudioBuffer> {
+  const duration = 1.6;
+  return render(duration, (ctx) => {
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, 0);
+    gain.gain.exponentialRampToValueAtTime(0.22, 0.35);
+    gain.gain.exponentialRampToValueAtTime(0.16, duration * 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.0001, duration);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(420, 0);
+    filter.connect(gain).connect(ctx.destination);
+
+    for (const [freq, detune] of [
+      [72, 0],
+      [76, -6],
+    ] as const) {
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, 0);
+      osc.detune.setValueAtTime(detune, 0);
+      // pitch wobbles unevenly rather than a clean vibrato — reads as pained/wrong
+      osc.frequency.setValueAtTime(freq, 0.4);
+      osc.frequency.linearRampToValueAtTime(freq - 14, 0.75);
+      osc.frequency.linearRampToValueAtTime(freq + 8, 1.15);
+      osc.frequency.linearRampToValueAtTime(freq - 5, duration);
+      osc.connect(filter);
+      osc.start(0);
+      osc.stop(duration);
+    }
+
+    // a rasp of noise underneath, for throat texture rather than a clean tone
+    const rasp = ctx.createBufferSource();
+    rasp.buffer = whiteNoiseBuffer(ctx, duration);
+    const raspFilter = ctx.createBiquadFilter();
+    raspFilter.type = "bandpass";
+    raspFilter.frequency.setValueAtTime(300, 0);
+    raspFilter.Q.setValueAtTime(0.8, 0);
+    const raspGain = ctx.createGain();
+    raspGain.gain.setValueAtTime(0.05, 0);
+    rasp.connect(raspFilter).connect(raspGain).connect(ctx.destination);
+    rasp.start(0);
+  });
+}
+
 export function synthTVHum(duration = 2.5): Promise<AudioBuffer> {
   return render(duration, (ctx) => {
     const src = ctx.createBufferSource();

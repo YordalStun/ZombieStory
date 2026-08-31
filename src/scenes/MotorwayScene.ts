@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
 import { GAME_WIDTH, GAME_HEIGHT, PLAYER_NAME } from "@/config/constants";
-import { MwTex, GLASS, QUEUE_CARS, carTexKey } from "@/gfx/motorway";
+import { MwTex, GLASS, QUEUE_CARS, ZOMBIE_TARGET_CAR_ID, carTexKey } from "@/gfx/motorway";
+import { FigureTex } from "@/gfx/zombieFigure";
 import { FxTex } from "@/gfx/fx";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
@@ -11,9 +12,11 @@ import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
   MOTORWAY_ARRIVAL_LINES,
   MOTORWAY_ENDING_LINES,
-  RADIO_STAGES,
-  RADIO_DEAD_LINES,
+  MOTORWAY_NOTICE_LINES,
+  RADIO_BROADCAST_LINES,
   RADIO_OFF_LINES,
+  ZOMBIE_BANG_LINES,
+  ZOMBIE_DRAG_LINES,
   HORN_LINES,
   WHEEL_LINES,
   MIRROR_LINES,
@@ -57,11 +60,14 @@ export class MotorwayScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
 
   private radioOn = false;
-  private radioStage = 0;
+  private radioNarrationPlayed = false;
   private radioSprite!: Phaser.GameObjects.Image;
   private radioGlow!: Phaser.GameObjects.Rectangle;
   private busy = true;
   private finished = false;
+
+  private carSpritesById = new Map<string, Phaser.GameObjects.Image>();
+  private zombieEventStarted = false;
 
   private droplets: Phaser.GameObjects.Image[] = [];
   private dropletTimer?: Phaser.Time.TimerEvent;
@@ -78,9 +84,11 @@ export class MotorwayScene extends Phaser.Scene {
     this.hotspots = [];
     this.focusIndex = 0;
     this.radioOn = false;
-    this.radioStage = 0;
+    this.radioNarrationPlayed = false;
     this.busy = true;
     this.finished = false;
+    this.carSpritesById.clear();
+    this.zombieEventStarted = false;
     this.droplets = [];
   }
 
@@ -93,7 +101,8 @@ export class MotorwayScene extends Phaser.Scene {
     this.add.image(0, 0, MwTex.BACKDROP).setOrigin(0, 0).setDepth(DEPTH.BACKDROP);
 
     for (const car of QUEUE_CARS) {
-      this.add.image(car.x, car.y, carTexKey(car.id)).setDepth(DEPTH.CAR + car.y / 100);
+      const sprite = this.add.image(car.x, car.y, carTexKey(car.id)).setDepth(DEPTH.CAR + car.y / 100);
+      this.carSpritesById.set(car.id, sprite);
     }
     this.addBrakeLightGlow();
 
@@ -107,6 +116,12 @@ export class MotorwayScene extends Phaser.Scene {
     this.createWipers();
     this.setupInput();
     this.scheduleEngineJolt();
+
+    // if the player never touches the radio at all, the scene still has to
+    // go somewhere eventually rather than sit in the queue forever
+    this.time.delayedCall(50000, () => {
+      if (!this.radioNarrationPlayed) void this.beginZombieSequence();
+    });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.rain?.destroy();
@@ -333,6 +348,15 @@ export class MotorwayScene extends Phaser.Scene {
     if (!this.finished) this.showFocus();
   }
 
+  /** Like say(), but the lines advance on their own — see DialoguePlayer.playAuto(). */
+  private async sayAuto(script: DialogueScript): Promise<void> {
+    this.busy = true;
+    EventBus.emit(Events.PROMPT_HIDE);
+    await DialoguePlayer.playAuto(script);
+    this.busy = false;
+    if (!this.finished) this.showFocus();
+  }
+
   private async interact(spot: Hotspot): Promise<void> {
     switch (spot.id) {
       case "wheel":
@@ -351,45 +375,111 @@ export class MotorwayScene extends Phaser.Scene {
     }
   }
 
-  private async useRadio(): Promise<void> {
-    if (!this.radioOn) {
-      this.radioOn = true;
-      this.radioSprite.setTexture(MwTex.RADIO_ON);
-      this.radioGlow.setFillStyle(0x8ce0a4, 0.1);
-      AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.5 });
-    }
+  private setRadioTexture(on: boolean): void {
+    this.radioSprite.setTexture(on ? MwTex.RADIO_ON : MwTex.RADIO_OFF);
+    this.radioGlow.setFillStyle(on ? 0x8ce0a4 : 0xffb765, on ? 0.1 : 0.07);
+  }
 
-    if (this.radioStage >= RADIO_STAGES.length) {
-      await this.say(RADIO_DEAD_LINES);
+  private async useRadio(): Promise<void> {
+    AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.5 });
+
+    if (!this.radioNarrationPlayed) {
+      // first press: the broadcast plays through on its own — no clicking
+      // required, though a click still skips a line ahead if you want to
+      this.radioNarrationPlayed = true;
+      this.radioOn = true;
+      this.setRadioTexture(true);
+      await this.sayAuto(RADIO_BROADCAST_LINES);
+      // it's Danny's own line that stops it, not the radio dying — it
+      // stays on and can now be freely toggled
+      this.armZombieEvent(Phaser.Math.Between(6000, 9000));
       return;
     }
 
-    const stage = RADIO_STAGES[this.radioStage];
-    this.radioStage += 1;
-    await this.say(stage);
-
-    // the last broadcast cuts out — that's the cue the scene ends on
-    if (this.radioStage >= RADIO_STAGES.length) {
-      this.radioSprite.setTexture(MwTex.RADIO_OFF);
-      this.radioGlow.setFillStyle(0xffb765, 0.07);
-      this.radioOn = false;
-      await this.say(RADIO_OFF_LINES);
-      await this.endScene();
-    }
+    // every press after that is a plain on/off toggle
+    this.radioOn = !this.radioOn;
+    this.setRadioTexture(this.radioOn);
+    if (!this.radioOn) await this.say(RADIO_OFF_LINES);
   }
 
-  private async endScene(): Promise<void> {
+  private armZombieEvent(delayMs: number): void {
+    this.time.delayedCall(delayMs, () => void this.beginZombieSequence());
+  }
+
+  /**
+   * The scene's actual ending: a figure works its way to the red car in the
+   * right lane, drags its driver out, and the pair are gone off the right of
+   * the screen before the fade. Runs entirely on tweens against the same
+   * static queue art — nothing here needed a new animated sprite sheet.
+   */
+  private async beginZombieSequence(): Promise<void> {
+    if (this.zombieEventStarted || this.finished) return;
+    // let whatever the player's mid-interaction with finish naturally
+    // instead of cutting it off
+    while (this.busy) await this.wait(250);
+    if (this.zombieEventStarted || this.finished) return;
+    this.zombieEventStarted = true;
     this.finished = true;
-    this.busy = true;
     EventBus.emit(Events.PROMPT_HIDE);
 
-    await this.wait(700);
-    await DialoguePlayer.play(MOTORWAY_ENDING_LINES);
+    const target = QUEUE_CARS.find((c) => c.id === ZOMBIE_TARGET_CAR_ID)!;
+    const targetSprite = this.carSpritesById.get(target.id)!;
+
+    await this.say(MOTORWAY_NOTICE_LINES);
+
+    // emerges from further back in the same lane and closes in on the car
+    const zombie = this.add.image(target.x + 10, target.y - 40, FigureTex.ZOMBIE);
+    zombie.setDepth(DEPTH.CAR + target.y / 100 + 0.3).setScale(0.45);
+    AudioManager.playSfx(SfxKey.GROAN, { volume: 0.4 });
+
+    await new Promise<void>((resolve) => {
+      this.tweens.add({
+        targets: zombie,
+        x: target.x - target.w * 0.5 - 7,
+        y: target.y - 2,
+        scale: 1,
+        duration: 3200,
+        ease: "Sine.easeIn",
+        onComplete: () => resolve(),
+      });
+    });
+
+    await this.say(ZOMBIE_BANG_LINES);
+
+    for (let i = 0; i < 3; i++) {
+      AudioManager.playSfx(SfxKey.BANG, { volume: 0.55 });
+      this.tweens.add({ targets: targetSprite, angle: { from: -1.5, to: 1.5 }, duration: 90, yoyo: true, repeat: 1 });
+      await new Promise<void>((resolve) => {
+        this.tweens.add({ targets: zombie, x: zombie.x + 4, duration: 90, yoyo: true, onComplete: () => resolve() });
+      });
+      await this.wait(320);
+    }
+    targetSprite.setAngle(0);
+
+    const driver = this.add.image(target.x - target.w * 0.25, target.y - 4, FigureTex.DRIVER);
+    driver.setDepth(zombie.depth + 0.1);
+    AudioManager.playSfx(SfxKey.GROAN, { volume: 0.3 });
+
+    await this.say(ZOMBIE_DRAG_LINES);
+
+    const dragMs = 2200;
+    this.tweens.add({ targets: [zombie, driver], x: `+=${GAME_WIDTH}`, duration: dragMs, ease: "Cubic.easeIn" });
+    const struggleTimer = this.time.addEvent({
+      delay: 70,
+      repeat: Math.floor(dragMs / 70),
+      callback: () => driver.setY(target.y - 4 + Phaser.Math.Between(-2, 2)),
+    });
+    await this.wait(dragMs);
+    struggleTimer.remove();
+    zombie.destroy();
+    driver.destroy();
+
+    await this.say(MOTORWAY_ENDING_LINES);
 
     await fadeOut(1400);
     showEndSlate(
       "TO BE CONTINUED",
-      `${PLAYER_NAME} is nine miles from work and has just realised he is never getting there.`,
+      `${PLAYER_NAME} is nine miles from work, and something is walking between the cars.`,
     );
     await fadeIn(600);
     await this.wait(3200);

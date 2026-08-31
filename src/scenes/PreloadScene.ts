@@ -6,6 +6,7 @@ import { generatePlayerTextures, createPlayerAnimations } from "@/gfx/playerSpri
 import { generateMenuBackdrop } from "@/gfx/backdrop";
 import { generateFxTextures } from "@/gfx/fx";
 import { generateMotorwayTextures } from "@/gfx/motorway";
+import { generateFigureTextures } from "@/gfx/zombieFigure";
 import { generateDogTextures, createDogAnimations } from "@/gfx/dogSpriteGen";
 import { AudioManager } from "@/core/managers/AudioManager";
 import { showLoading, hideMenu } from "@/ui/dom/MenuUI";
@@ -29,6 +30,7 @@ export class PreloadScene extends Phaser.Scene {
     generateMenuBackdrop(this);
     generateFxTextures(this);
     generateMotorwayTextures(this);
+    generateFigureTextures(this);
     generateDogTextures(this);
     createPlayerAnimations(this);
     createDogAnimations(this);
