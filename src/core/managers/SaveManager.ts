@@ -1,10 +1,13 @@
 import { SAVE_KEYS, type Checkpoint } from "@/config/constants";
 
+export type SoundSource = "generated" | "pack";
+
 export interface Settings {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
   fullscreen: boolean;
+  soundSource: SoundSource;
 }
 
 export interface Progress {
@@ -18,6 +21,7 @@ const DEFAULT_SETTINGS: Settings = {
   musicVolume: 0.7,
   sfxVolume: 0.9,
   fullscreen: false,
+  soundSource: "generated",
 };
 
 const SAVE_VERSION = 1;

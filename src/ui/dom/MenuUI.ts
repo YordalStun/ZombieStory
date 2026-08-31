@@ -19,6 +19,42 @@ function makeButton(label: string, onClick: () => void, disabled = false): HTMLB
   return btn;
 }
 
+function makeChoiceRow<T extends string>(
+  label: string,
+  options: Array<{ value: T; label: string }>,
+  current: T,
+  onChange: (v: T) => void,
+): HTMLDivElement {
+  const row = document.createElement("div");
+  row.className = "settings-choice-row";
+
+  const labelEl = document.createElement("label");
+  labelEl.textContent = label;
+
+  const group = document.createElement("div");
+  group.className = "settings-choice-options";
+
+  const buttons = options.map((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "settings-choice-btn";
+    btn.textContent = opt.label;
+    btn.classList.toggle("active", opt.value === current);
+    btn.addEventListener("click", () => {
+      if (opt.value === current) return;
+      AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.4 });
+      buttons.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      onChange(opt.value);
+    });
+    group.appendChild(btn);
+    return btn;
+  });
+
+  row.append(labelEl, group);
+  return row;
+}
+
 function makeSlider(label: string, value: number, onChange: (v: number) => void): HTMLDivElement {
   const row = document.createElement("div");
   row.className = "settings-slider-row";
@@ -110,6 +146,25 @@ export function showSettingsMenu(onBack: () => void): void {
   panel.appendChild(makeSlider("Master Volume", settings.masterVolume, (v) => onVolumeChange({ masterVolume: v })));
   panel.appendChild(makeSlider("Music Volume", settings.musicVolume, (v) => onVolumeChange({ musicVolume: v })));
   panel.appendChild(makeSlider("SFX Volume", settings.sfxVolume, (v) => onVolumeChange({ sfxVolume: v })));
+
+  panel.appendChild(
+    makeChoiceRow(
+      "Sound",
+      [
+        { value: "generated" as const, label: "Generated" },
+        { value: "pack" as const, label: "Sound Pack" },
+      ],
+      settings.soundSource,
+      (v) => {
+        SaveManager.updateSettings({ soundSource: v });
+        EventBus.emit(Events.SETTINGS_CHANGED);
+      },
+    ),
+  );
+  const soundHint = document.createElement("div");
+  soundHint.className = "settings-hint";
+  soundHint.textContent = "Generated: synthesized in-browser. Sound Pack: real recordings (CC0/CC-BY).";
+  panel.appendChild(soundHint);
 
   const fsRow = document.createElement("label");
   fsRow.className = "settings-checkbox-row";

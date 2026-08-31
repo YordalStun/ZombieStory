@@ -25,9 +25,38 @@ export const MusicKey = {
   TENSION: "music_tension",
 } as const;
 
+/**
+ * Real-audio alternative for the "Sound pack" setting (see Settings menu).
+ * Only keys listed here have a pack alternative; anything missing quietly
+ * falls back to the generated version even when "pack" is selected — see
+ * public/audio/CREDITS.md for what's covered and where each file came from.
+ * Paths are relative (no leading slash) so they resolve correctly under
+ * Vite's `base: "./"` regardless of where the built site is served from.
+ */
+const PACK_URLS: Partial<Record<string, string>> = {
+  [SfxKey.UI_CLICK]: "audio/sfx/sfx_ui_click.wav",
+  [SfxKey.UI_HOVER]: "audio/sfx/sfx_ui_hover.wav",
+  [SfxKey.FOOTSTEP]: "audio/sfx/sfx_footstep.wav",
+  [SfxKey.INTERACT]: "audio/sfx/sfx_interact.wav",
+  [SfxKey.DOOR]: "audio/sfx/sfx_door.wav",
+  [SfxKey.TV_HUM]: "audio/sfx/sfx_tv_hum.ogg",
+  [SfxKey.TV_OFF]: "audio/sfx/sfx_tv_off.wav",
+  [SfxKey.RAIN]: "audio/sfx/sfx_rain.ogg",
+  [SfxKey.RAIN_GLASS]: "audio/sfx/sfx_rain_glass.ogg",
+  [SfxKey.WIND]: "audio/sfx/sfx_wind.ogg",
+  [SfxKey.BANG]: "audio/sfx/sfx_bang.wav",
+  [SfxKey.GROAN]: "audio/sfx/sfx_groan.wav",
+  [MusicKey.MENU]: "audio/music/music_menu.ogg",
+};
+
+function packKeyFor(logicalKey: string): string {
+  return `${logicalKey}__pack`;
+}
+
 interface LoopingBed {
   sound: Phaser.Sound.BaseSound;
   baseVolume: number;
+  logicalKey: string;
 }
 
 /**
@@ -75,18 +104,46 @@ class AudioManagerClass {
       }
     });
 
+    await this.loadPackAssets(scene);
+
     EventBus.on(Events.SETTINGS_CHANGED, () => this.refreshVolumes());
     this.ready = true;
+  }
+
+  /** Queues every real-audio file listed in PACK_URLS and waits for the loader to finish (successes and failures alike — a missing/broken file just never lands in the cache, so resolveKey() falls back silently). */
+  private loadPackAssets(scene: Phaser.Scene): Promise<void> {
+    return new Promise((resolve) => {
+      let queued = 0;
+      for (const [key, url] of Object.entries(PACK_URLS)) {
+        if (!url) continue;
+        scene.load.audio(packKeyFor(key), url);
+        queued++;
+      }
+      if (queued === 0) {
+        resolve();
+        return;
+      }
+      scene.load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      scene.load.start();
+    });
   }
 
   private get settings() {
     return SaveManager.loadSettings();
   }
 
+  /** Real pack file if the setting asks for it and that key actually has one loaded; the generated key otherwise. */
+  private resolveKey(logicalKey: string): string {
+    if (this.settings.soundSource === "pack" && this.scene?.cache.audio.has(packKeyFor(logicalKey))) {
+      return packKeyFor(logicalKey);
+    }
+    return logicalKey;
+  }
+
   playSfx(key: string, opts: Phaser.Types.Sound.SoundConfig = {}): void {
     if (!this.scene || !this.ready) return;
     const s = this.settings;
-    this.scene.sound.play(key, {
+    this.scene.sound.play(this.resolveKey(key), {
       ...opts,
       volume: (opts.volume ?? 1) * s.sfxVolume * s.masterVolume,
     });
@@ -97,12 +154,12 @@ class AudioManagerClass {
     if (!this.scene || !this.ready) return;
     this.stopLoop(id);
     const s = this.settings;
-    const sound = this.scene.sound.add(key, {
+    const sound = this.scene.sound.add(this.resolveKey(key), {
       loop: true,
       volume: volume * s.sfxVolume * s.masterVolume,
     });
     sound.play();
-    this.loopingBeds.set(id, { sound, baseVolume: volume });
+    this.loopingBeds.set(id, { sound, baseVolume: volume, logicalKey: key });
   }
 
   /** Smoothly retargets a loop's base volume — e.g. rain/wind swelling as the player steps outside. */
@@ -134,7 +191,7 @@ class AudioManagerClass {
   playMusic(key: string, fadeMs = 900): void {
     if (!this.scene || !this.ready || this.currentMusicKey === key) return;
     const s = this.settings;
-    const next = this.scene.sound.add(key, { loop: true, volume: 0 });
+    const next = this.scene.sound.add(this.resolveKey(key), { loop: true, volume: 0 });
     next.play();
     this.scene.tweens.add({ targets: next, volume: s.musicVolume * s.masterVolume, duration: fadeMs });
 
@@ -164,14 +221,45 @@ class AudioManagerClass {
     this.currentMusicKey = undefined;
   }
 
-  /** Re-applies current settings to whatever is already playing (called on SETTINGS_CHANGED). */
+  /**
+   * Re-applies current settings to whatever is already playing (called on
+   * SETTINGS_CHANGED). Volume-only changes just retarget the existing Sound
+   * object, but a soundSource flip means anything already looping/playing is
+   * bound to the *other* key's buffer — those get stopped and recreated on
+   * the newly-resolved key (from the same position isn't preserved, but
+   * these are all ambient loops/music beds, so restarting reads as seamless).
+   */
   refreshVolumes(): void {
     const s = this.settings;
-    if (this.currentMusic) {
-      (this.currentMusic as Phaser.Sound.WebAudioSound).volume = s.musicVolume * s.masterVolume;
+
+    if (this.currentMusic && this.currentMusicKey) {
+      const desiredKey = this.resolveKey(this.currentMusicKey);
+      if (this.currentMusic.key !== desiredKey && this.scene) {
+        const volume = (this.currentMusic as Phaser.Sound.WebAudioSound).volume;
+        this.currentMusic.stop();
+        this.currentMusic.destroy();
+        const next = this.scene.sound.add(desiredKey, { loop: true, volume });
+        next.play();
+        this.currentMusic = next;
+      } else {
+        (this.currentMusic as Phaser.Sound.WebAudioSound).volume = s.musicVolume * s.masterVolume;
+      }
     }
-    for (const bed of this.loopingBeds.values()) {
-      (bed.sound as Phaser.Sound.WebAudioSound).volume = bed.baseVolume * s.sfxVolume * s.masterVolume;
+
+    for (const [id, bed] of this.loopingBeds) {
+      const desiredKey = this.resolveKey(bed.logicalKey);
+      if (bed.sound.key !== desiredKey && this.scene) {
+        bed.sound.stop();
+        bed.sound.destroy();
+        const sound = this.scene.sound.add(desiredKey, {
+          loop: true,
+          volume: bed.baseVolume * s.sfxVolume * s.masterVolume,
+        });
+        sound.play();
+        this.loopingBeds.set(id, { ...bed, sound });
+      } else {
+        (bed.sound as Phaser.Sound.WebAudioSound).volume = bed.baseVolume * s.sfxVolume * s.masterVolume;
+      }
     }
   }
 }

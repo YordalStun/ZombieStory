@@ -287,6 +287,48 @@
   cursor: pointer;
 }
 
+.settings-choice-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: clamp(13px, 1.1vw, 16px);
+}
+
+.settings-choice-options {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-choice-btn {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 0.85vw, 12px);
+  color: #b8b2a0;
+  background: rgba(240, 236, 226, 0.06);
+  border: 1px solid rgba(240, 236, 226, 0.25);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.settings-choice-btn:hover {
+  border-color: #ffd15c;
+}
+
+.settings-choice-btn.active {
+  color: #ffd15c;
+  border-color: #ffd15c;
+  background: rgba(255, 209, 92, 0.14);
+}
+
+.settings-hint {
+  font-size: clamp(10px, 0.9vw, 12px);
+  color: #8a8474;
+  width: 100%;
+  line-height: 1.5;
+}
+
 /* ---------- fade ---------- */
 
 #fade-layer {
