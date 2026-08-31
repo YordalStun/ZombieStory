@@ -276,19 +276,19 @@ export class MotorwayScene extends Phaser.Scene {
   private applyIdleShake(timeMs: number): void {
     const t = timeMs / 1000 + this.idleShakeSeed;
     // two detuned sines so it doesn't land as a perfect metronome
-    const buzzX = Math.sin(t * 46) * 0.55 + Math.sin(t * 71 + 1.7) * 0.3;
-    const buzzY = Math.sin(t * 53 + 0.6) * 0.45 + Math.sin(t * 84 + 2.4) * 0.25;
+    const buzzX = Math.sin(t * 46) * 0.24 + Math.sin(t * 71 + 1.7) * 0.13;
+    const buzzY = Math.sin(t * 53 + 0.6) * 0.2 + Math.sin(t * 84 + 2.4) * 0.11;
     // idle RPM drifts a little rather than holding dead steady
-    const surge = 0.6 + 0.4 * Math.sin(t * 0.7);
+    const surge = 0.5 + 0.3 * Math.sin(t * 0.7);
     this.cameras.main.setScroll(buzzX * surge, buzzY * surge);
   }
 
   /** An occasional bigger jolt on top of the buzz — the engine catching unevenly. */
   private scheduleEngineJolt(): void {
     this.time.addEvent({
-      delay: Phaser.Math.Between(3500, 7500),
+      delay: Phaser.Math.Between(5500, 10000),
       callback: () => {
-        this.cameras.main.shake(140, 0.0028);
+        this.cameras.main.shake(110, 0.0011);
         this.scheduleEngineJolt();
       },
     });
@@ -462,12 +462,18 @@ export class MotorwayScene extends Phaser.Scene {
 
     await this.say(ZOMBIE_DRAG_LINES);
 
+    // gone limp — tipped onto its side and hauled along, not marched upright
+    driver.setAngle(92);
+
     const dragMs = 2200;
     this.tweens.add({ targets: [zombie, driver], x: `+=${GAME_WIDTH}`, duration: dragMs, ease: "Cubic.easeIn" });
     const struggleTimer = this.time.addEvent({
       delay: 70,
       repeat: Math.floor(dragMs / 70),
-      callback: () => driver.setY(target.y - 4 + Phaser.Math.Between(-2, 2)),
+      callback: () => {
+        driver.setY(target.y - 4 + Phaser.Math.Between(-2, 2));
+        driver.setAngle(92 + Phaser.Math.Between(-7, 7));
+      },
     });
     await this.wait(dragMs);
     struggleTimer.remove();
