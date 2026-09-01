@@ -33,6 +33,44 @@ export function initUIRoot(): HTMLDivElement {
     </div>
     <div id="menu-layer" class="hidden"></div>
     <div id="fade-layer"></div>
+    <div id="computer-overlay" class="hidden">
+      <div id="computer-crt-frame">
+        <div id="computer-crt-screen">
+          <div id="computer-boot" class="hidden">
+            <div id="computer-boot-log"></div>
+          </div>
+          <div id="computer-login" class="hidden">
+            <div class="computer-login-box">
+              <div class="computer-login-title">OFFICE-OS</div>
+              <div class="computer-login-user">d.reyes</div>
+              <div class="computer-login-field">
+                <span>Password:</span>
+                <span id="computer-login-password"></span>
+              </div>
+              <div id="computer-login-status"></div>
+            </div>
+          </div>
+          <div id="computer-desktop" class="hidden">
+            <div id="computer-icons"></div>
+            <div id="computer-app-window" class="hidden">
+              <div id="computer-app-titlebar">
+                <span id="computer-app-title"></span>
+                <button id="computer-app-close">&times;</button>
+              </div>
+              <div id="computer-app-body"></div>
+            </div>
+            <div id="computer-taskbar">
+              <span id="computer-taskbar-start">OFFICE-OS</span>
+              <span id="computer-clock"></span>
+              <button id="computer-power-off" title="Step away (Esc)">⏻</button>
+            </div>
+          </div>
+          <div id="computer-crt-scanlines"></div>
+          <div id="computer-crt-vignette"></div>
+        </div>
+      </div>
+      <div id="computer-exit-hint">ESC to step away from the desk</div>
+    </div>
   `;
   app.appendChild(root);
   return root;
@@ -64,14 +102,23 @@ export function worldToScreen(
   worldX: number,
   worldY: number,
 ): { x: number; y: number } {
-  // zoom defaults to 1 everywhere except OfficeScene, so the zoom factor is
-  // a no-op for every other scene's existing math. Rounded because this is
-  // recomputed every frame against a lerped (continuously, fractionally
-  // drifting) camera-follow scroll — left unrounded, a CSS left/top in
-  // fractional px redraws slightly differently every frame, which reads as
-  // the prompt text jittering/"floating" in place, worse the higher the zoom.
+  // Deliberately built from camera.worldView, not camera.scrollX/scrollY.
+  // Those two stop agreeing once the camera is both zoomed and pinned
+  // against its bounds (e.g. following the player into a desk pod near the
+  // level edge, which happens for roughly half the office's pods): scrollX
+  // keeps reporting the *unclamped* follow target, while worldView is
+  // Phaser's own authoritative post-clamp visible rect and always matches
+  // what's actually drawn. Using scrollX there put the prompt hundreds of
+  // px away from the thing it was labelling — sometimes off-screen
+  // entirely, which is what read as "talking to nobody".
+  const view = camera.worldView;
+  // Rounded because this is recomputed every frame against a lerped
+  // (continuously, fractionally drifting) camera-follow scroll — left
+  // unrounded, a CSS left/top in fractional px redraws slightly differently
+  // every frame, which reads as the prompt text jittering/"floating" in
+  // place, worse the higher the zoom.
   return {
-    x: Math.round((worldX - camera.scrollX) * camera.zoom * currentScale),
-    y: Math.round((worldY - camera.scrollY) * camera.zoom * currentScale),
+    x: Math.round(((worldX - view.x) / view.width) * camera.width * currentScale),
+    y: Math.round(((worldY - view.y) / view.height) * camera.height * currentScale),
   };
 }
