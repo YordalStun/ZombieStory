@@ -76,11 +76,18 @@ interface PodDecor {
   rug?: boolean;
 }
 
+// Margins here need to clear the *cubicle's own* solid footprint, which is
+// its full 28x24 sprite (Arcade's StaticBody.updateFromGameObject() re-syncs
+// the body to the full display size after any custom setSize/setOffset —
+// the "walk over the top, blocked by the base" reduced footprint used
+// elsewhere never actually applies to solid props), not a shrunk hitbox —
+// 18/12 measured a few px short of that in testing, clipping into the
+// nearest cubicle corner.
 const SIDE_OFFSET: Record<"e" | "w" | "n" | "s", [number, number]> = {
-  e: [POD_HALF_W + 18, 0],
-  w: [-POD_HALF_W - 18, 0],
-  n: [0, -POD_HALF_H - 12],
-  s: [0, POD_HALF_H + 12],
+  e: [POD_HALF_W + 25, 0],
+  w: [-POD_HALF_W - 25, 0],
+  n: [0, -POD_HALF_H - 25],
+  s: [0, POD_HALF_H + 25],
 };
 
 function placeDeskPod(
@@ -111,16 +118,34 @@ function placeDeskPod(
     const id = `${podId}_${i}`;
     props.push({ id, tex: OfficeTex.CUBICLE, x: dx, y: dy, solid: true, flipX: slot.flipX, flipY: slot.flipY });
 
+    const figureX = dx + slot.faceDx * 7;
+    const figureY = dy + slot.faceDy * 6;
+
     const occ = occupants[i];
     if (occ.kind === "player_desk") {
       onPlayerDesk?.({ x: dx, y: dy });
+      // the player's own monitor — every other occupied desk gets a glow
+      // overlay added over its seated figure in OfficeScene, but there's no
+      // figure here to hang it off, so it's placed explicitly at the same
+      // relative offset, and doubles as the "use computer" interact point
+      props.push({
+        id: "player_computer",
+        tex: OfficeTex.MONITOR_GLOW,
+        x: figureX - 3,
+        y: figureY - 8,
+        interactable: { prompt: "Use computer", range: 18 },
+      });
       return;
     }
-    if (occ.kind === "empty") return;
+    if (occ.kind === "empty") {
+      // an empty desk still has its chair — without one it read as a
+      // partition with a bite taken out of it rather than a vacant seat
+      props.push({ id: `${id}_chair`, tex: PropTex.CHAIR, x: figureX, y: figureY, flipX: slot.flipX });
+      return;
+    }
 
-    const figureX = dx + slot.faceDx * 7;
-    const figureY = dy + slot.faceDy * 6;
     const variant = COWORKER_SEAT_VARIANTS[variantCursor.i % COWORKER_SEAT_VARIANTS.length];
+    const deskClutter = variantCursor.i % 3 === 0;
     variantCursor.i++;
 
     if (occ.kind === "named") {
@@ -130,10 +155,21 @@ function placeDeskPod(
         y: figureY,
         tex: variant,
         seated: true,
-        interactable: { prompt: occ.label, range: 28 },
+        // same-pod seats sit ~38px apart at minimum (see figureX/Y above) —
+        // a wider range here made neighbouring seats' catch circles overlap,
+        // so "closest interactable" could pick the coworker next door
+        // instead of the one the player was actually standing in front of
+        interactable: { prompt: occ.label, range: 17 },
       });
     } else {
       coworkers.push({ id: `${id}_extra`, x: figureX, y: figureY, tex: variant, seated: true });
+    }
+
+    // roughly a third of occupied desks get something left on the desk
+    // surface itself (papers, a mug) — on the cubicle side away from the
+    // seat, never overlapping the figure
+    if (deskClutter) {
+      props.push({ id: `${id}_papers`, tex: OfficeTex.PAPER_STACK, x: dx - slot.faceDx * 6, y: dy - slot.faceDy * 8 });
     }
   });
 
@@ -267,50 +303,98 @@ export function buildOfficeLevel(): OfficeLevel {
   carveMeetingRoom(grid, props, 2, 8, 11, 10, "meeting_a", "large");
   carveMeetingRoom(grid, props, 2, 21, 8, 7, "meeting_b", "small");
 
-  // ---- open-plan floor: desk pods scattered with generous walking room
-  // around and between them, not packed into forced corridors ----
+  // ---- open-plan floor: a real grid of desk pods on an 8-tile pitch.
+  // The first pass had 6 pods on a 13-tile pitch, which left the aisles
+  // between them reading as bare carpet no matter how much loose clutter
+  // got scattered into the gaps — the actual fix is more desks, not more
+  // scatter. Two of the grid slots are given to shared equipment (printer,
+  // water cooler) instead of a pod, same as a real floor plan would. Not
+  // every desk is occupied — some are simply empty, which reads as
+  // attrition/people already gone rather than a staffing bug.
   const pods: Array<{ id: string; cx: number; cy: number; occ: [PodOccupant, PodOccupant, PodOccupant, PodOccupant]; decor: PodDecor }> = [
     {
       id: "pod1",
-      cx: 20,
-      cy: 12,
-      occ: [{ kind: "extra" }, { kind: "extra" }, { kind: "named", id: "dana", label: "Talk to Dana" }, { kind: "named", id: "priya", label: "Talk to Priya" }],
-      decor: { rug: true, filing: "e", bin: "w" },
+      cx: 19,
+      cy: 11,
+      occ: [{ kind: "named", id: "dana", label: "Talk to Dana" }, { kind: "extra" }, { kind: "empty" }, { kind: "extra" }],
+      decor: { rug: true, filing: "w", bin: "n" },
     },
     {
       id: "pod2",
-      cx: 33,
+      cx: 35,
       cy: 11,
-      occ: [{ kind: "named", id: "mark", label: "Talk to Mark" }, { kind: "empty" }, { kind: "extra" }, { kind: "named", id: "owen", label: "Talk to Owen" }],
-      decor: { rug: true, filing: "e", coat: "n" },
+      occ: [{ kind: "extra" }, { kind: "named", id: "mark", label: "Talk to Mark" }, { kind: "empty" }, { kind: "extra" }],
+      decor: { rug: true, coat: "e", bin: "n" },
     },
     {
       id: "pod3",
       cx: 19,
-      cy: 25,
-      occ: [{ kind: "extra" }, { kind: "named", id: "fatima", label: "Talk to Fatima" }, { kind: "named", id: "ben", label: "Talk to Ben" }, { kind: "extra" }],
-      decor: { rug: true, bin: "e" },
-    },
-    {
-      id: "pod4",
-      cx: 34,
-      cy: 26,
-      occ: [{ kind: "player_desk" }, { kind: "named", id: "sam", label: "Talk to Sam" }, { kind: "extra" }, { kind: "empty" }],
-      decor: { rug: true, filing: "w", coat: "e" },
-    },
-    {
-      id: "pod5",
-      cx: 19,
-      cy: 39,
-      occ: [{ kind: "extra" }, { kind: "extra" }, { kind: "empty" }, { kind: "named", id: "elena", label: "Talk to Elena" }],
+      cy: 19,
+      occ: [{ kind: "empty" }, { kind: "extra" }, { kind: "named", id: "priya", label: "Talk to Priya" }, { kind: "extra" }],
       decor: { rug: true, bin: "w" },
     },
     {
+      id: "pod4",
+      cx: 27,
+      cy: 19,
+      occ: [{ kind: "named", id: "owen", label: "Talk to Owen" }, { kind: "empty" }, { kind: "extra" }, { kind: "empty" }],
+      decor: { rug: true, filing: "n" },
+    },
+    {
+      id: "pod5",
+      cx: 35,
+      cy: 19,
+      occ: [{ kind: "extra" }, { kind: "empty" }, { kind: "named", id: "fatima", label: "Talk to Fatima" }, { kind: "extra" }],
+      decor: { rug: true, coat: "e", filing: "s" },
+    },
+    {
       id: "pod6",
-      cx: 33,
-      cy: 40,
-      occ: [{ kind: "empty" }, { kind: "extra" }, { kind: "named", id: "chris", label: "Talk to Chris" }, { kind: "named", id: "greg", label: "Talk to Greg" }],
-      decor: { rug: true, filing: "e" },
+      cx: 19,
+      cy: 27,
+      occ: [{ kind: "named", id: "ben", label: "Talk to Ben" }, { kind: "extra" }, { kind: "empty" }, { kind: "empty" }],
+      decor: { rug: true, bin: "w" },
+    },
+    {
+      id: "pod7",
+      cx: 35,
+      cy: 27,
+      occ: [{ kind: "extra" }, { kind: "named", id: "sam", label: "Talk to Sam" }, { kind: "empty" }, { kind: "extra" }],
+      decor: { rug: true, filing: "e", bin: "s" },
+    },
+    {
+      id: "pod8",
+      cx: 19,
+      cy: 35,
+      occ: [{ kind: "empty" }, { kind: "extra" }, { kind: "named", id: "elena", label: "Talk to Elena" }, { kind: "empty" }],
+      decor: { rug: true, bin: "w" },
+    },
+    {
+      id: "pod9",
+      cx: 27,
+      cy: 35,
+      occ: [{ kind: "player_desk" }, { kind: "extra" }, { kind: "named", id: "chris", label: "Talk to Chris" }, { kind: "empty" }],
+      decor: { rug: true, coat: "s" },
+    },
+    {
+      id: "pod10",
+      cx: 35,
+      cy: 35,
+      occ: [{ kind: "empty" }, { kind: "extra" }, { kind: "named", id: "greg", label: "Talk to Greg" }, { kind: "extra" }],
+      decor: { rug: true, filing: "e", bin: "s" },
+    },
+    {
+      id: "pod11",
+      cx: 19,
+      cy: 42,
+      occ: [{ kind: "extra" }, { kind: "empty" }, { kind: "extra" }, { kind: "empty" }],
+      decor: { rug: true, bin: "w" },
+    },
+    {
+      id: "pod12",
+      cx: 35,
+      cy: 42,
+      occ: [{ kind: "empty" }, { kind: "extra" }, { kind: "empty" }, { kind: "extra" }],
+      decor: { rug: true, coat: "e" },
     },
   ];
   let playerDeskWorldPos = { x: 0, y: 0 };
@@ -324,70 +408,70 @@ export function buildOfficeLevel(): OfficeLevel {
     });
   }
 
-  // printer station — printer, its own filing cabinet and a loose stack of
-  // paper right beside it, between pods 1 and 2 (not floating in open floor)
-  const printer = tileCenter(26.5, 10.5);
+  // printer station occupies the grid slot between pods 1/2 and 3/5 —
+  // its own filing cabinet and a loose stack of paper right beside it
+  const printer = tileCenter(27, 11);
   props.push({ id: "printer", tex: OfficeTex.PRINTER, x: printer.x, y: printer.y, solid: true, interactable: { prompt: "Check printer", range: 22 } });
   props.push({ id: "printer_cabinet", tex: OfficeTex.FILING_CABINET, x: printer.x + 15, y: printer.y, solid: true });
   props.push({ id: "printer_papers", tex: OfficeTex.PAPER_STACK, x: printer.x - 12, y: printer.y + 6 });
   props.push({ id: "printer_bin", tex: OfficeTex.BIN, x: printer.x, y: printer.y + 14 });
 
-  // coffee/water station between pods 3 and 4
-  const cooler = tileCenter(26.5, 24.5);
+  // coffee/water station occupies the matching grid slot one row down,
+  // between pods 6/7 and 9
+  const cooler = tileCenter(27, 27);
   props.push({ id: "water_cooler", tex: OfficeTex.WATER_COOLER, x: cooler.x, y: cooler.y, solid: true, interactable: { prompt: "Get some water", range: 22 } });
-  props.push({ id: "coffee_counter", tex: PropTex.COUNTER, x: cooler.x + 20, y: cooler.y, solid: true, tint: 0x8a8f94 });
+  props.push({ id: "coffee_counter", tex: PropTex.COUNTER, x: cooler.x + 24, y: cooler.y, solid: true, tint: 0x8a8f94 });
   props.push({ id: "coffee_mug_stack", tex: OfficeTex.PAPER_STACK, x: cooler.x - 14, y: cooler.y + 8 });
+  props.push({ id: "coffee_bin", tex: OfficeTex.BIN, x: cooler.x, y: cooler.y + 16 });
 
-  // whiteboards + posters/calendars scattered through the open floor,
-  // placed against the nearest real wall rather than mid-carpet
-  props.push({ id: "wb_east", tex: OfficeTex.WHITEBOARD, x: tileCenter(LEVEL_WIDTH - 1.6, 18).x, y: tileCenter(LEVEL_WIDTH - 1.6, 18).y });
-  props.push({ id: "poster_east_1", tex: OfficeTex.POSTER_A, x: tileCenter(LEVEL_WIDTH - 1.6, 32).x, y: tileCenter(LEVEL_WIDTH - 1.6, 32).y });
-  props.push({ id: "calendar_east", tex: OfficeTex.CALENDAR, x: tileCenter(LEVEL_WIDTH - 1.6, 40).x, y: tileCenter(LEVEL_WIDTH - 1.6, 40).y });
+  // ---- records alcove, west wall below the meeting rooms (x<13, y>28) —
+  // this strip has no pods (the meeting rooms above it rule out a grid
+  // column), so instead of scattering loose filing cabinets across open
+  // carpet it gets one purpose-built archive nook: several cabinets
+  // clustered together the way a real records room would be, against the
+  // wall it's actually plausible next to ----
+  const archiveBaseX = 5;
+  const archiveBaseY = 32;
+  for (let i = 0; i < 3; i++) {
+    const p = tileCenter(archiveBaseX + i * 1.4, archiveBaseY);
+    props.push({ id: `archive_cabinet_${i}`, tex: OfficeTex.FILING_CABINET, x: p.x, y: p.y, solid: true });
+  }
+  const archivePapers = tileCenter(archiveBaseX + 1.4, archiveBaseY + 1.6);
+  props.push({ id: "archive_papers", tex: OfficeTex.PAPER_STACK, x: archivePapers.x, y: archivePapers.y });
+  const archivePoster = tileCenter(archiveBaseX + 0.5, archiveBaseY - 2.5);
+  props.push({ id: "archive_poster", tex: OfficeTex.POSTER_A, x: archivePoster.x, y: archivePoster.y });
+  const archiveBin = tileCenter(archiveBaseX - 2, archiveBaseY + 1);
+  props.push({ id: "archive_bin", tex: OfficeTex.BIN, x: archiveBin.x, y: archiveBin.y });
+  for (const oy of [-8, 8]) {
+    const p = tileCenter(archiveBaseX - 1.5, archiveBaseY + oy / 5);
+    props.push({ id: `archive_plant_${oy}`, tex: OfficeTex.PLANT, x: p.x, y: p.y });
+  }
+
+  // whiteboards + posters/calendars against the east wall, one per window
+  // bay, plus the meeting-room-facing wall — real wall-mounted dressing,
+  // not floor clutter
+  props.push({ id: "wb_east", tex: OfficeTex.WHITEBOARD, x: tileCenter(LEVEL_WIDTH - 1.6, 15).x, y: tileCenter(LEVEL_WIDTH - 1.6, 15).y });
+  props.push({ id: "poster_east_1", tex: OfficeTex.POSTER_A, x: tileCenter(LEVEL_WIDTH - 1.6, 23).x, y: tileCenter(LEVEL_WIDTH - 1.6, 23).y });
+  props.push({ id: "calendar_east", tex: OfficeTex.CALENDAR, x: tileCenter(LEVEL_WIDTH - 1.6, 31).x, y: tileCenter(LEVEL_WIDTH - 1.6, 31).y });
+  props.push({ id: "poster_east_2", tex: OfficeTex.POSTER_B, x: tileCenter(LEVEL_WIDTH - 1.6, 39).x, y: tileCenter(LEVEL_WIDTH - 1.6, 39).y });
+  props.push({ id: "calendar_east_2", tex: OfficeTex.CALENDAR, x: tileCenter(LEVEL_WIDTH - 1.6, 45).x, y: tileCenter(LEVEL_WIDTH - 1.6, 45).y });
   props.push({ id: "poster_meeting_a", tex: OfficeTex.POSTER_B, x: tileCenter(9.4, 32).x, y: tileCenter(9.4, 32).y });
 
-  // Filler clutter across the open floor on a loosely-jittered grid — the
-  // pods and named stations read fine up close, but at this zoom the camera
-  // shows enough world space that the aisles *between* them were reading as
-  // bare carpet. This guarantees baseline coverage everywhere without it
-  // reading as a random scatter (still grid-anchored, just jittered).
-  // Tighter than a first pass: 5-tile pitch instead of 6, and the west
-  // walkway (x<13, kept clear up top for the meeting rooms) gets its own
-  // fill once those rooms are behind it (y>=29). Bound extended south of
-  // 43 so the approach to the break room (y~44-48, before its own vending
-  // machines/rug take over) isn't a dead gap.
-  const fillerRng = makeRng(552013);
-  const fillerTex = [OfficeTex.PLANT, OfficeTex.BIN, OfficeTex.PAPER_STACK, OfficeTex.FILING_CABINET];
-  let fillerN = 0;
-  for (let gy = 14; gy < LEVEL_HEIGHT - 6; gy += 5) {
-    const startX = gy >= 29 ? 4 : 13;
-    for (let gx = startX; gx < LEVEL_WIDTH - 2; gx += 5) {
-      const jx = gx + (fillerRng() - 0.5) * 2.5;
-      const jy = gy + (fillerRng() - 0.5) * 2.5;
-      const p = tileCenter(jx, jy);
-      const tooClose = props.some((existing) => Math.hypot(existing.x - p.x, existing.y - p.y) < 22);
-      if (tooClose) continue;
-      const tex = fillerTex[fillerN % fillerTex.length];
-      props.push({ id: `filler_${fillerN}`, tex, x: p.x, y: p.y, solid: tex === OfficeTex.FILING_CABINET });
-      fillerN++;
-    }
-  }
-
-  // The far-west corridor (past pods 3/5, x<11) kept testing right at the
-  // bare-minimum visible-object count even with the pass above — a second,
-  // tighter strip just for that walkway so it never reads as empty carpet.
-  const westRng = makeRng(661029);
-  const westTex = [OfficeTex.PLANT, OfficeTex.PAPER_STACK, OfficeTex.BIN];
-  let westN = 0;
-  for (let gy = 29; gy < LEVEL_HEIGHT - 6; gy += 4) {
-    const jx = 4 + (westRng() - 0.5) * 3;
-    const jy = gy + (westRng() - 0.5) * 2.5;
-    const p = tileCenter(jx, jy);
-    const tooClose = props.some((existing) => Math.hypot(existing.x - p.x, existing.y - p.y) < 18);
-    if (tooClose) continue;
-    const tex = westTex[westN % westTex.length];
-    props.push({ id: `west_filler_${westN}`, tex, x: p.x, y: p.y });
-    westN++;
-  }
+  // a handful of plants at the open intersections between pod rows/columns
+  // — softening the grid the way an actual office breaks up a cubicle
+  // farm, not a blind scatter: fixed, hand-picked spots at the gaps the
+  // pod grid itself leaves open, one per intersection rather than several
+  const aisleIntersections: Array<[number, number]> = [
+    [27, 15],
+    [23, 23],
+    [31, 31],
+    [23, 39],
+    [31, 11],
+  ];
+  aisleIntersections.forEach(([tx, ty], i) => {
+    const p = tileCenter(tx, ty);
+    props.push({ id: `aisle_plant_${i}`, tex: OfficeTex.PLANT, x: p.x, y: p.y });
+  });
 
   // ---- break room (south end): TV flush against the south wall, a loose
   // crowd of coworkers gathered facing it, plus its own dressing ----
@@ -402,6 +486,18 @@ export function buildOfficeLevel(): OfficeLevel {
   props.push({ id: "break_bin", tex: OfficeTex.BIN, x: breakBin.x, y: breakBin.y });
   const breakApproachPlant = tileCenter(4, LEVEL_HEIGHT - 9);
   props.push({ id: "break_approach_plant", tex: OfficeTex.PLANT, x: breakApproachPlant.x, y: breakApproachPlant.y });
+
+  // supplies staged near the break room's back corridor — spare chairs and
+  // a couple of boxes of stock for the vending machines, waiting to be put
+  // away; this is also the only stretch of the west corridor with nothing
+  // else nearby (the records alcove is well north of it, the break room's
+  // own dressing well south), so it earns a real reason to be here rather
+  // than another loose scatter
+  const supplyBaseY = LEVEL_HEIGHT - 13;
+  props.push({ id: "supply_cabinet", tex: OfficeTex.FILING_CABINET, x: tileCenter(6, supplyBaseY).x, y: tileCenter(6, supplyBaseY).y, solid: true });
+  props.push({ id: "supply_boxes", tex: OfficeTex.PAPER_STACK, x: tileCenter(6, supplyBaseY + 1.4).x, y: tileCenter(6, supplyBaseY + 1.4).y });
+  props.push({ id: "supply_chair", tex: PropTex.CHAIR, x: tileCenter(3.5, supplyBaseY + 1).x, y: tileCenter(3.5, supplyBaseY + 1).y });
+  props.push({ id: "supply_bin", tex: OfficeTex.BIN, x: tileCenter(8.5, supplyBaseY).x, y: tileCenter(8.5, supplyBaseY).y });
 
   for (const px of [10, LEVEL_WIDTH - 11]) {
     const p = tileCenter(px, LEVEL_HEIGHT - 3);
