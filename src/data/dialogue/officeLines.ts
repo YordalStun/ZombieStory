@@ -90,6 +90,11 @@ export const FIND_DESK_LINES: DialogueScript = [
 export const AT_DESK_LINES: DialogueScript = [
   { speaker: PLAYER_NAME, text: "Back at my desk. Same chair, same view of the partition wall." },
   { speaker: PLAYER_NAME, text: "None of it feels like it means anything right now." },
+  { speaker: PLAYER_NAME, text: "I've got messages piling up. Should probably see what everyone's saying." },
+];
+
+export const NOT_YET_LINES: DialogueScript = [
+  { speaker: PLAYER_NAME, text: "Not now. I need to figure out what's going on first." },
 ];
 
 export const LOBBY_LINES: DialogueScript = [

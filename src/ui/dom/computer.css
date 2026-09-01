@@ -1,0 +1,448 @@
+/* ---------- desk computer: CRT-framed in-fiction desktop ---------- */
+
+#computer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #05060a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+#computer-overlay.hidden {
+  display: none;
+}
+
+#computer-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#computer-crt-frame {
+  width: min(90vw, 120vh);
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(145deg, #3a3a3e, #1c1c1f);
+  border-radius: 22px;
+  padding: min(3vw, 3.5vh);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), inset 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
+#computer-crt-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0a0e0a;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.85);
+  font-family: "VT323", "Courier New", monospace;
+}
+
+#computer-crt-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.18) 0, rgba(0, 0, 0, 0.18) 1px, transparent 2px, transparent 3px);
+  mix-blend-mode: multiply;
+  z-index: 50;
+}
+
+#computer-crt-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 min(8vw, 9vh) rgba(0, 0, 0, 0.65);
+  z-index: 51;
+}
+
+#computer-exit-hint {
+  font-family: "VT323", monospace;
+  font-size: clamp(13px, 1.2vw, 17px);
+  color: #8a8578;
+  letter-spacing: 0.04em;
+}
+
+/* ---- boot ---- */
+
+#computer-boot {
+  position: absolute;
+  inset: 0;
+  padding: 4%;
+  color: #6ee06e;
+  font-size: clamp(12px, 1.6vw, 18px);
+  text-shadow: 0 0 4px rgba(110, 224, 110, 0.5);
+}
+
+#computer-boot.hidden {
+  display: none;
+}
+
+#computer-boot-log div {
+  margin-bottom: 0.4em;
+  white-space: pre;
+}
+
+/* ---- login ---- */
+
+#computer-login {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6ee06e;
+}
+
+#computer-login.hidden {
+  display: none;
+}
+
+.computer-login-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: clamp(14px, 1.6vw, 20px);
+  text-shadow: 0 0 4px rgba(110, 224, 110, 0.5);
+}
+
+.computer-login-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(14px, 1.6vw, 20px);
+  margin-bottom: 6px;
+}
+
+.computer-login-field {
+  display: flex;
+  gap: 8px;
+}
+
+#computer-login-password {
+  letter-spacing: 0.2em;
+}
+
+#computer-login-status {
+  min-height: 1.4em;
+  opacity: 0.85;
+}
+
+/* ---- desktop ---- */
+
+#computer-desktop {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #2a5a6e, #1c3f4d 70%);
+}
+
+#computer-desktop.hidden {
+  display: none;
+}
+
+#computer-icons {
+  position: absolute;
+  top: 3%;
+  left: 2%;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 4%;
+  height: 88%;
+  align-content: flex-start;
+}
+
+.computer-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: clamp(52px, 8vw, 74px);
+  background: none;
+  border: 1px solid transparent;
+  color: #e8f0ee;
+  font-family: "VT323", monospace;
+  font-size: clamp(10px, 1vw, 13px);
+  padding: 4px;
+  cursor: pointer;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.computer-icon:hover,
+.computer-icon:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.computer-icon-glyph {
+  font-size: clamp(20px, 2.4vw, 30px);
+  line-height: 1;
+}
+
+.computer-icon-label {
+  text-align: center;
+  line-height: 1.15;
+}
+
+#computer-taskbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7%;
+  min-height: 26px;
+  background: #c8c4b8;
+  border-top: 2px solid #efece2;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 12px;
+  color: #24261f;
+  font-family: "VT323", monospace;
+  font-size: clamp(12px, 1.3vw, 16px);
+}
+
+#computer-taskbar-start {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(8px, 0.85vw, 11px);
+  background: #e8e4d8;
+  border: 1px solid #8a8578;
+  padding: 3px 8px;
+}
+
+#computer-clock {
+  margin-left: auto;
+}
+
+#computer-power-off {
+  background: none;
+  border: 1px solid #8a8578;
+  color: #24261f;
+  font-size: clamp(12px, 1.3vw, 16px);
+  padding: 1px 8px;
+  cursor: pointer;
+}
+
+/* ---- app window ---- */
+
+#computer-app-window {
+  position: absolute;
+  left: 8%;
+  top: 6%;
+  right: 4%;
+  bottom: 12%;
+  background: #e8e4d8;
+  border: 2px solid #8a8578;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  color: #24261f;
+}
+
+#computer-app-window.hidden {
+  display: none;
+}
+
+#computer-app-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to right, #2a5a6e, #3a7488);
+  color: #f0ece2;
+  padding: 4px 8px;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 0.95vw, 12px);
+}
+
+#computer-app-close {
+  background: #c84a3c;
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#computer-app-body {
+  flex: 1;
+  overflow: auto;
+  font-family: "VT323", monospace;
+  font-size: clamp(13px, 1.3vw, 17px);
+  line-height: 1.4;
+}
+
+.computer-inert-message {
+  padding: 24px;
+  white-space: pre-line;
+  color: #55503f;
+}
+
+/* ---- mail ---- */
+
+.computer-mail {
+  flex-direction: row !important;
+  display: flex;
+}
+
+.computer-mail-list {
+  width: 34%;
+  min-width: 160px;
+  border-right: 2px solid #8a8578;
+  overflow-y: auto;
+}
+
+.computer-mail-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(138, 133, 120, 0.4);
+  padding: 6px 10px;
+  cursor: pointer;
+  color: #24261f;
+  font-family: "VT323", monospace;
+}
+
+.computer-mail-row:hover {
+  background: rgba(58, 116, 136, 0.15);
+}
+
+.computer-mail-row.read {
+  color: #7a7568;
+}
+
+.computer-mail-from {
+  font-size: clamp(12px, 1.2vw, 15px);
+  font-weight: bold;
+}
+
+.computer-mail-subject {
+  font-size: clamp(12px, 1.15vw, 15px);
+}
+
+.computer-mail-date {
+  font-size: clamp(10px, 1vw, 12px);
+  opacity: 0.7;
+}
+
+.computer-mail-detail {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.computer-mail-detail-header {
+  border-bottom: 1px solid rgba(138, 133, 120, 0.4);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.computer-mail-detail-subject {
+  font-size: clamp(15px, 1.5vw, 19px);
+  font-weight: bold;
+}
+
+.computer-mail-detail-meta {
+  font-size: clamp(11px, 1.05vw, 13px);
+  color: #55503f;
+  margin-top: 4px;
+}
+
+.computer-mail-photo {
+  margin-top: 12px;
+}
+
+.computer-mail-photo-img {
+  width: min(320px, 100%);
+  height: 180px;
+  border: 1px solid #8a8578;
+}
+
+.computer-mail-photo-caption {
+  font-size: clamp(10px, 1vw, 12px);
+  color: #55503f;
+  margin-top: 4px;
+}
+
+/* ---- news ---- */
+
+.computer-news {
+  display: flex;
+  flex-direction: row;
+}
+
+.computer-news-article {
+  flex: 1;
+  padding: 18px 22px;
+  overflow-y: auto;
+  border-right: 2px solid #8a8578;
+}
+
+.computer-news-kicker {
+  color: #c84a3c;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 0.9vw, 11px);
+  margin-bottom: 8px;
+}
+
+.computer-news-headline {
+  font-size: clamp(18px, 2vw, 24px);
+  font-weight: bold;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.computer-news-byline {
+  font-size: clamp(11px, 1vw, 13px);
+  color: #55503f;
+  margin-bottom: 12px;
+}
+
+.computer-news-sidebar {
+  width: 32%;
+  min-width: 150px;
+  padding: 18px 14px;
+  background: rgba(138, 133, 120, 0.12);
+}
+
+.computer-news-sidebar-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 0.85vw, 11px);
+  margin-bottom: 10px;
+  color: #2a5a6e;
+}
+
+.computer-news-sidebar-item {
+  font-size: clamp(11px, 1.05vw, 13px);
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(138, 133, 120, 0.35);
+}
+
+/* ---- dino game ---- */
+
+.computer-dino {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+}
+
+.computer-dino-canvas {
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 560 / 160;
+  image-rendering: pixelated;
+  border: 1px solid #8a8578;
+  cursor: pointer;
+}
+
+.computer-dino-hint {
+  font-size: clamp(11px, 1vw, 13px);
+  color: #55503f;
+}

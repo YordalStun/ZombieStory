@@ -30,11 +30,13 @@ import {
   LOBBY_LINES,
   FIND_DESK_LINES,
   AT_DESK_LINES,
+  NOT_YET_LINES,
 } from "@/data/dialogue/officeLines";
 import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
+import { openComputer } from "@/ui/dom/ComputerUI";
 
 interface PropEntry {
   spec: PropSpec;
@@ -75,6 +77,9 @@ export class OfficeScene extends Phaser.Scene {
   private busy = true;
   private findingDesk = false;
   private deskArrow?: Phaser.GameObjects.Image;
+  private deskComputerUnlocked = false;
+  private emailsRead = false;
+  private newsRead = false;
 
   constructor() {
     super(SceneKeys.OFFICE);
@@ -88,6 +93,9 @@ export class OfficeScene extends Phaser.Scene {
     this.focusedInteractable = null;
     this.broadcastPlayed = false;
     this.busy = true;
+    this.deskComputerUnlocked = false;
+    this.emailsRead = false;
+    this.newsRead = false;
   }
 
   create(): void {
@@ -339,7 +347,42 @@ export class OfficeScene extends Phaser.Scene {
       this.deskArrow.destroy();
       this.deskArrow = undefined;
       ObjectiveManager.complete("return_desk");
-      void this.playLinesBlocking(AT_DESK_LINES).then(() => ObjectiveManager.clear());
+      void this.playLinesBlocking(AT_DESK_LINES).then(() => {
+        this.deskComputerUnlocked = true;
+        ObjectiveManager.start(
+          "At your desk",
+          [
+            { id: "read_emails", label: "Read your emails" },
+            { id: "read_news", label: "Check the news" },
+          ],
+          [],
+        );
+      });
+    }
+  }
+
+  private async useComputer(): Promise<void> {
+    if (!this.deskComputerUnlocked) {
+      await this.playLinesBlocking(NOT_YET_LINES);
+      return;
+    }
+    this.player.setControlsEnabled(false);
+    EventBus.emit(Events.PROMPT_HIDE);
+
+    await openComputer({
+      onEmailsRead: () => {
+        this.emailsRead = true;
+        ObjectiveManager.complete("read_emails");
+      },
+      onNewsRead: () => {
+        this.newsRead = true;
+        ObjectiveManager.complete("read_news");
+      },
+    });
+
+    this.player.setControlsEnabled(true);
+    if (this.emailsRead && this.newsRead) {
+      ObjectiveManager.clear();
     }
   }
 
@@ -417,6 +460,10 @@ export class OfficeScene extends Phaser.Scene {
     }
     if (id === "printer") {
       await this.playLinesBlocking(PRINTER_LINES);
+      return;
+    }
+    if (id === "player_computer") {
+      await this.useComputer();
       return;
     }
     const lines = COWORKER_LINES[id];
