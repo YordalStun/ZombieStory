@@ -66,6 +66,7 @@ function toolbarSep(): void {
 toolbarTitle("Level Editor");
 
 const selectToolBtn = toolbarButton("Select", () => scene.setTool({ type: "select" }));
+const playTestBtn = toolbarButton("▶ Play Test", () => scene.togglePlayTest());
 toolbarSep();
 
 toolbarButton("New", () => {
@@ -169,6 +170,12 @@ const game = new Phaser.Game({
   height: canvasWrap.clientHeight || 640,
   backgroundColor: "#0a0a0d",
   pixelArt: true,
+  // needed for Play Test mode's player movement/collision — otherwise
+  // identical to edit mode, which never touches physics
+  physics: {
+    default: "arcade",
+    arcade: { debug: false },
+  },
   scene: [EditorScene],
 });
 
@@ -216,6 +223,18 @@ waitForScene((readyScene) => {
   });
   scene.events.on("cursor-moved", (p: { x: number; y: number }) => {
     statusCursor.innerHTML = `<b>${Math.round(p.x)}, ${Math.round(p.y)}</b>`;
+  });
+  scene.events.on("playtest-changed", (info: { active: boolean; usedDefaultSpawn?: boolean }) => {
+    playTestBtn.textContent = info.active ? "■ Stop Test" : "▶ Play Test";
+    playTestBtn.classList.toggle("active", info.active);
+    paletteEl.classList.toggle("disabled-during-test", info.active);
+    if (info.active) {
+      statusTool.innerHTML = info.usedDefaultSpawn
+        ? "<b>PLAY TESTING</b> (no player start set — spawned at level center) — WASD/Arrows, Esc to stop"
+        : "<b>PLAY TESTING</b> — WASD/Arrows to move, Esc to stop";
+    } else {
+      statusTool.innerHTML = `Tool: <b>${scene.tool.type}</b>`;
+    }
   });
 
   buildPalette(paletteEl, scene);

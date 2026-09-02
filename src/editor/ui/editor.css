@@ -153,6 +153,11 @@ input[type="checkbox"] {
   flex-direction: column;
 }
 
+.editor-palette.disabled-during-test {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .editor-side {
   width: 260px;
   background: var(--panel);

@@ -5,6 +5,8 @@ import { generatePropTextures } from "@/gfx/props";
 import { generateOfficeTextures } from "@/gfx/office";
 import { generateCoworkerTextures } from "@/gfx/coworkerFigure";
 import { generateFigureTextures } from "@/gfx/zombieFigure";
+import { generatePlayerTextures, createPlayerAnimations } from "@/gfx/playerSpriteGen";
+import { Player, type MoveInput } from "@/core/entities/Player";
 import { TILESET_KEY, WALL_TILE_SET } from "@/editor/paletteData";
 import { EditorHistory } from "@/editor/history";
 import { newLevel, resizeTileGrid, type EditorLevelData, type PropSpec } from "@/editor/types";
@@ -48,6 +50,7 @@ export class EditorScene extends Phaser.Scene {
   snapToGrid = true;
   selectedPropIndex: number | null = null;
   selectedMarker: MarkerKind | null = null;
+  playTesting = false;
 
   private tileComposite!: Phaser.Textures.CanvasTexture;
   private tileImage!: Phaser.GameObjects.Image;
@@ -73,6 +76,13 @@ export class EditorScene extends Phaser.Scene {
   private showGrid = true;
   private lastPaintCell: { x: number; y: number } | null = null;
 
+  // ---- play test ----
+  private player?: Player;
+  private playMoveInput?: MoveInput;
+  private wallColliders?: Phaser.Physics.Arcade.StaticGroup;
+  private testedPropSprites: Phaser.GameObjects.Image[] = [];
+  private preTestCamera: { zoom: number; scrollX: number; scrollY: number } | null = null;
+
   constructor() {
     super("Editor");
   }
@@ -83,7 +93,8 @@ export class EditorScene extends Phaser.Scene {
     generateOfficeTextures(this);
     generateCoworkerTextures(this);
     generateFigureTextures(this);
-    this.events.emit("scene-ready");
+    generatePlayerTextures(this);
+    createPlayerAnimations(this);
 
     this.propLayer = this.add.container(0, 0);
     this.gridGfx = this.add.graphics();
@@ -94,7 +105,23 @@ export class EditorScene extends Phaser.Scene {
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.input.keyboard!.on("keydown-DELETE", () => this.deleteSelected());
     this.input.keyboard!.on("keydown-BACKSPACE", () => this.deleteSelected());
-    this.input.keyboard!.on("keydown-ESC", () => this.setTool({ type: "select" }));
+    this.input.keyboard!.on("keydown-ESC", () => {
+      if (this.playTesting) this.stopPlayTest();
+      else this.setTool({ type: "select" });
+    });
+
+    const kb = this.input.keyboard!;
+    const cursors = kb.createCursorKeys();
+    const w = kb.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+    const a = kb.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    const s = kb.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    const d = kb.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    this.playMoveInput = {
+      left: () => cursors.left.isDown || a.isDown,
+      right: () => cursors.right.isDown || d.isDown,
+      up: () => cursors.up.isDown || w.isDown,
+      down: () => cursors.down.isDown || s.isDown,
+    };
 
     this.input.on("wheel", (pointer: Phaser.Input.Pointer, _go: unknown, _dx: number, dy: number) => {
       const cam = this.cameras.main;
@@ -119,9 +146,18 @@ export class EditorScene extends Phaser.Scene {
     this.events.emit("scene-ready");
   }
 
+  update(time: number, delta: number): void {
+    if (this.playTesting && this.player && this.playMoveInput) {
+      this.player.update(time, delta, this.playMoveInput);
+    }
+  }
+
   // ---- public API used by the DOM UI ----
 
   loadLevel(data: EditorLevelData, resetHistory = false): void {
+    // swapping level data out from under a live player/physics bodies
+    // would orphan them — always leave play-test cleanly first
+    if (this.playTesting) this.stopPlayTest();
     this.level = data;
     this.selectedPropIndex = null;
     this.selectedMarker = null;
@@ -144,6 +180,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   resizeLevel(width: number, height: number): void {
+    if (this.playTesting) this.stopPlayTest();
     this.level = {
       ...this.level,
       width,
@@ -202,12 +239,123 @@ export class EditorScene extends Phaser.Scene {
     this.events.emit("zoom-changed", cam.zoom);
   }
 
+  togglePlayTest(): void {
+    if (this.playTesting) this.stopPlayTest();
+    else this.startPlayTest();
+  }
+
+  /**
+   * Spawns the real game Player entity (same sprite, speed, collision
+   * shape as in-game) at the playerStart marker and lets you walk it
+   * around with WASD/arrows against the level's actual wall tiles and
+   * solid props — the fastest way to sanity-check scale, gaps, and
+   * "can I actually get from A to B" without leaving the editor. Nothing
+   * here is wired to SaveManager/ObjectiveManager/AudioManager/etc., so
+   * it can't touch game save data even though it's the exact same Player
+   * class the game itself uses.
+   */
+  private startPlayTest(): void {
+    if (this.playTesting) return;
+    this.deselect();
+    this.setTool({ type: "select" });
+
+    const cam = this.cameras.main;
+    this.preTestCamera = { zoom: cam.zoom, scrollX: cam.scrollX, scrollY: cam.scrollY };
+
+    const usedDefaultSpawn = !this.level.playerStart;
+    const spawn = this.level.playerStart ?? {
+      x: (this.level.width * TILE_SIZE) / 2,
+      y: (this.level.height * TILE_SIZE) / 2,
+    };
+
+    this.player = new Player(this, spawn.x, spawn.y);
+    this.player.setOutfit("dressed");
+    this.player.setDepth(50 + spawn.y);
+
+    this.wallColliders = this.buildWallColliders();
+    this.physics.add.collider(this.player, this.wallColliders);
+
+    this.testedPropSprites = this.enablePropTestColliders();
+    for (const sprite of this.testedPropSprites) {
+      this.physics.add.collider(this.player, sprite);
+    }
+
+    cam.stopFollow();
+    cam.setZoom(2.4);
+    cam.startFollow(this.player, true, 0.1, 0.1);
+    this.events.emit("zoom-changed", cam.zoom);
+
+    this.playTesting = true;
+    this.events.emit("playtest-changed", { active: true, usedDefaultSpawn });
+  }
+
+  private stopPlayTest(): void {
+    if (!this.playTesting) return;
+
+    this.player?.destroy();
+    this.player = undefined;
+    this.wallColliders?.destroy(true);
+    this.wallColliders = undefined;
+    this.testedPropSprites = [];
+    // physics bodies were added directly to the live prop sprites — the
+    // simplest way back to exactly edit mode's state is to just rebuild
+    // them fresh, rather than trying to strip bodies off one at a time
+    this.rebuildProps();
+
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    if (this.preTestCamera) {
+      cam.setZoom(this.preTestCamera.zoom);
+      cam.setScroll(this.preTestCamera.scrollX, this.preTestCamera.scrollY);
+      this.events.emit("zoom-changed", cam.zoom);
+    }
+    this.preTestCamera = null;
+
+    this.playTesting = false;
+    this.events.emit("playtest-changed", { active: false });
+  }
+
+  private buildWallColliders(): Phaser.Physics.Arcade.StaticGroup {
+    const group = this.physics.add.staticGroup();
+    for (let y = 0; y < this.level.height; y++) {
+      for (let x = 0; x < this.level.width; x++) {
+        if (!WALL_TILE_SET.has(this.level.tiles[y]?.[x] ?? -1)) continue;
+        const zone = this.add.zone(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+        group.add(zone);
+      }
+    }
+    return group;
+  }
+
+  /** Same body-shaping convention as the real scenes: a footprint roughly the base of the sprite, not its full bounding box, so tall props don't block from further away than they visually should. */
+  private enablePropTestColliders(): Phaser.GameObjects.Image[] {
+    const enabled: Phaser.GameObjects.Image[] = [];
+    this.level.props.forEach((spec, i) => {
+      if (!spec.solid) return;
+      const img = this.propSprites[i];
+      if (!img) return;
+      this.physics.add.existing(img, true);
+      const body = img.body as Phaser.Physics.Arcade.StaticBody;
+      const texW = img.width;
+      const texH = img.height;
+      const w = Math.max(6, texW * 0.75);
+      const h = Math.max(6, texH * 0.4);
+      body.setSize(w, h);
+      body.setOffset((texW - w) / 2, texH - h);
+      body.updateFromGameObject();
+      enabled.push(img);
+    });
+    return enabled;
+  }
+
   undo(): void {
+    if (this.playTesting) this.stopPlayTest();
     const prev = this.history.undo();
     if (prev) this.applyHistoryState(prev);
   }
 
   redo(): void {
+    if (this.playTesting) this.stopPlayTest();
     const next = this.history.redo();
     if (next) this.applyHistoryState(next);
   }
@@ -431,7 +579,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private onPropPointerDown(index: number, pointer: Phaser.Input.Pointer): void {
-    if (this.tool.type !== "select" || this.spaceKey.isDown || pointer.button === 1) return;
+    if (this.playTesting || this.tool.type !== "select" || this.spaceKey.isDown || pointer.button === 1) return;
     pointer.event.stopPropagation();
     this.selectProp(index);
     this.isDraggingProp = true;
@@ -442,7 +590,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private onMarkerPointerDown(kind: MarkerKind, pointer: Phaser.Input.Pointer): void {
-    if (this.tool.type !== "select" || this.spaceKey.isDown || pointer.button === 1) return;
+    if (this.playTesting || this.tool.type !== "select" || this.spaceKey.isDown || pointer.button === 1) return;
     pointer.event.stopPropagation();
     this.selectMarker(kind);
     this.isDraggingProp = true;
@@ -474,6 +622,7 @@ export class EditorScene extends Phaser.Scene {
   }
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.playTesting) return;
     this.isPointerDown = true;
 
     if (this.spaceKey.isDown || pointer.button === 1) {

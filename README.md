@@ -42,6 +42,14 @@ ones you hand-edit or receive from someone else. The saved format
 `src/data/levels/*.ts` files closely enough to use as a starting point for
 new game levels by hand.
 
+**▶ Play Test** spawns the real game Player entity (same sprite/speed/
+collision shape as in-game) at the player-start marker and lets you walk
+it around with WASD/arrows against the level's actual walls and solid
+props — a fast way to sanity-check scale, gaps, and reachability without
+leaving the editor. Esc (or the button again) stops the test and restores
+the edit view exactly as it was. Nothing here touches SaveManager or any
+other game-state singleton, so it can't affect real save data.
+
 ## What's playable right now
 
 Main Menu → New Game → a silent, dark bedroom lit only by a flickering TV
