@@ -36,6 +36,11 @@ export function initUIRoot(): HTMLDivElement {
     <div id="computer-overlay" class="hidden">
       <div id="computer-crt-frame">
         <div id="computer-crt-screen">
+          <div id="computer-logo" class="hidden">
+            <div class="computer-logo-mark">M</div>
+            <div class="computer-logo-word">MERIDIAN</div>
+            <div class="computer-logo-sub">office workstation</div>
+          </div>
           <div id="computer-boot" class="hidden">
             <div id="computer-boot-log"></div>
           </div>
