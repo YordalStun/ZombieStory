@@ -13,6 +13,7 @@ import { generateCoworkerTextures } from "@/gfx/coworkerFigure";
 import { generateReturnDrivePovTextures } from "@/gfx/returnDrivePov";
 import { generateReturnDriveTextures } from "@/gfx/returnDrive";
 import { generateDadDrivePovTextures } from "@/gfx/dadDrivePov";
+import { generateCitySunsetTextures } from "@/gfx/citySunset";
 import { AudioManager } from "@/core/managers/AudioManager";
 import { showLoading, hideMenu } from "@/ui/dom/MenuUI";
 
@@ -42,6 +43,7 @@ export class PreloadScene extends Phaser.Scene {
     generateReturnDrivePovTextures(this);
     generateReturnDriveTextures(this);
     generateDadDrivePovTextures(this);
+    generateCitySunsetTextures(this);
     createPlayerAnimations(this);
     createDogAnimations(this);
 

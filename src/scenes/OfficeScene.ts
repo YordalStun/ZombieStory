@@ -5,6 +5,7 @@ import { TILESET_KEY, WALL_TILE_INDICES } from "@/gfx/tileset";
 import { OfficeTex } from "@/gfx/office";
 import { CoworkerTex } from "@/gfx/coworkerFigure";
 import { PropTex } from "@/gfx/props";
+import { CitySunsetTex } from "@/gfx/citySunset";
 import { buildOfficeLevel, type OfficeLevel, type CoworkerSpec } from "@/data/levels/officeLevel";
 import type { PropSpec } from "@/data/levels/apartmentLevel";
 import { Player, type MoveInput } from "@/core/entities/Player";
@@ -256,7 +257,7 @@ export class OfficeScene extends Phaser.Scene {
     for (const c of level.coworkers) {
       if (!c.seated || !c.monitorPos) continue;
       const glow = this.add.image(c.monitorPos.x, c.monitorPos.y, OfficeTex.MONITOR_GLOW);
-      glow.setDepth(DEPTH.ACTOR_SORT_BASE + c.y + 0.5);
+      glow.setDepth(DEPTH.ACTOR_SORT_BASE + c.monitorPos.y + 0.5);
       glow.setAlpha(0.7);
       this.lighting.makeLit(glow);
       this.tweens.add({
@@ -691,6 +692,38 @@ export class OfficeScene extends Phaser.Scene {
     boss.destroy();
   }
 
+  /**
+   * Path 2 only, right before the office fades out for the day: a hard cut
+   * away to a high-up view across the city, a timelapse sunset, then a hard
+   * cut back to the office — now visibly dimmer, evening having fallen
+   * while we were looking away — before the scene's own fade-to-black runs.
+   * Hard cuts (set alpha straight to 1, then destroy) bookend the beat;
+   * only the sky-to-sky progression itself crossfades, since that's the
+   * one part that's actually meant to read as time passing smoothly.
+   */
+  private async citySunsetCutscene(): Promise<void> {
+    const frames = [CitySunsetTex.DAY, CitySunsetTex.GOLDEN, CitySunsetTex.SUNSET, CitySunsetTex.DUSK, CitySunsetTex.NIGHT];
+    const images = frames.map((tex) =>
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, tex).setScrollFactor(0).setDepth(200000).setAlpha(0),
+    );
+    images[0].setAlpha(1);
+
+    await this.wait(600);
+    for (let i = 1; i < images.length; i++) {
+      await new Promise<void>((resolve) => {
+        this.tweens.add({ targets: images[i], alpha: 1, duration: 1000, onComplete: () => resolve() });
+      });
+      await this.wait(450);
+    }
+    await this.wait(500);
+
+    // ambient COLOR (not just the level float, which only drives the HUD
+    // reading) is what actually controls rendered brightness — see
+    // CombatTutorialScene for the fuller explanation
+    this.lighting.setAmbient(0x2c3040, 0.12);
+    images.forEach((img) => img.destroy());
+  }
+
   private async handleExit(): Promise<void> {
     if (!this.pathChosen) {
       await this.playLinesBlocking(NOT_YET_LINES);
@@ -704,6 +737,7 @@ export class OfficeScene extends Phaser.Scene {
       await this.bossInterceptBeat();
     } else {
       await this.giveBatBeat();
+      await this.citySunsetCutscene();
     }
 
     ObjectiveManager.complete("leave_office");
