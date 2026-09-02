@@ -217,8 +217,8 @@ export function generateDadDrivePovTextures(scene: Phaser.Scene): void {
     const dashTop = 175;
     const wheelCx = 270;
     const wheelCy = dashTop + 30;
-    const clusterCy = 140;
-    rect(ctx, 218, 116, 106, 42, cabinDeep);
+    const clusterCy = 157;
+    rect(ctx, 218, 133, 106, 42, cabinDeep);
     ctx.fillStyle = "#1c1c22";
     for (const [gx, gr] of [[244, 12], [296, 14]] as const) {
       ctx.beginPath();
