@@ -85,7 +85,9 @@ export class HomeArrivalScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBounds(0, 0, worldW, worldH);
 
-    this.lighting = new LightingManager(this, 0x1c2438, 0.25);
+    // see CombatTutorialScene for why this needs to be a lighter color, not
+    // a lower ambientLevel — the level float only feeds the HUD reading
+    this.lighting = new LightingManager(this, 0x4a5060, 0.25);
     this.lighting.makeLit(groundLayer);
 
     for (const spec of level.props) this.createProp(spec);
@@ -183,7 +185,10 @@ export class HomeArrivalScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     this.player.update(time, delta, this.moveInput);
-    if (!this.zombieDead) this.zombie.update(time, delta, this.player.x, this.player.y);
+    // held off until controls are actually enabled — it was reaching the
+    // player and "attacking" (colliding) mid-dialogue otherwise, before
+    // there was any way to respond
+    if (!this.busy && !this.zombieDead) this.zombie.update(time, delta, this.player.x, this.player.y);
     this.lighting.update(time, delta);
     EventBus.emit(Events.LIGHT_LEVEL, this.lighting.getLightLevelAt(this.player.x, this.player.y));
 

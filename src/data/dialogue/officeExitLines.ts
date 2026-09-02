@@ -25,9 +25,14 @@ export const WINDOW_POV_LINES: DialogueScript = [
 
 export const DAD_OUTSIDE_LINES: DialogueScript = [{ speaker: "Dad", text: "outside. hurry up x" }];
 
+export const DANA_GREETING_LINES: DialogueScript = [{ speaker: "Dana", text: `${PLAYER_NAME}! You heading off?` }];
+
+/** The line right before the visible throw. */
+export const DANA_HEADS_UP_LINES: DialogueScript = [{ speaker: "Dana", text: "Heads up!" }];
+
+/** After Danny's caught it. */
 export const DANA_BAT_LINES: DialogueScript = [
-  { speaker: "Dana", text: `${PLAYER_NAME}! You heading off?` },
-  { speaker: "Dana", text: "Take this. Found it in the stationery cupboard, don't ask me why it was in there." },
+  { speaker: "Dana", text: "Found it in the stationery cupboard, don't ask me why it was in there." },
   { speaker: "Dana", text: "Just — take it. Better than nothing." },
 ];
 

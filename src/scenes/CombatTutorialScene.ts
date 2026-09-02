@@ -89,7 +89,11 @@ export class CombatTutorialScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, worldW, worldH);
     this.cameras.main.setBounds(0, 0, worldW, worldH);
 
-    this.lighting = new LightingManager(this, 0x11131a, level.ambientLevel);
+    // ambient COLOR (not just the ambientLevel float, which only drives the
+    // HUD reading) is what actually controls rendered brightness — a near
+    // black color here meant total darkness the instant you stepped out of
+    // a lamp's pool, which read as broken rather than "night"
+    this.lighting = new LightingManager(this, 0x4a5060, level.ambientLevel);
     this.lighting.makeLit(groundLayer);
 
     const propEntries: PropEntry[] = [];

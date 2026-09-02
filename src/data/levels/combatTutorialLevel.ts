@@ -30,10 +30,14 @@ function buildDirtTrack(): CombatTutorialLevel {
   grid.fillRect(3, 1, 4, height - 2, TILE.DRIVEWAY);
 
   const props: PropSpec[] = [];
+  // close enough together that consecutive pools overlap a little — no
+  // fully dark stretch between them, even before the ambient floor helps
   const lampSpots: Array<[number, number]> = [
-    [2.3, 32],
-    [7.3, 22],
-    [2.3, 12],
+    [2.3, 35],
+    [7.3, 28],
+    [2.3, 21],
+    [7.3, 14],
+    [2.3, 7],
   ];
   lampSpots.forEach(([tx, ty], i) => {
     const p = tileCenter(tx, ty);
@@ -42,7 +46,7 @@ function buildDirtTrack(): CombatTutorialLevel {
       tex: PropTex.STREET_LAMP,
       x: p.x,
       y: p.y,
-      light: { radius: 50, color: 0xffe9a8, intensity: 0.75, flicker: { intensityJitter: 0.08 } },
+      light: { radius: 62, color: 0xffe9a8, intensity: 0.8, flicker: { intensityJitter: 0.08 } },
     });
   });
 

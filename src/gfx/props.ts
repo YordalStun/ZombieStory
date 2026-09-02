@@ -35,6 +35,7 @@ export const PropTex = {
   TOILET: "prop_toilet",
   BATHTUB: "prop_bathtub",
   PILLAR: "prop_pillar",
+  BAT: "prop_bat",
 } as const;
 
 // Display sizes, in px, at native (unscaled) resolution — used for physics
@@ -73,6 +74,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.TOILET]: { w: 12, h: 14 },
   [PropTex.BATHTUB]: { w: 16, h: 30 },
   [PropTex.PILLAR]: { w: 14, h: 14 },
+  [PropTex.BAT]: { w: 18, h: 8 },
 };
 
 function draw(
@@ -358,5 +360,15 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 0, 0, w, 3, 0x9d9d98);
     rect(ctx, 0, h - 3, w, 3, 0x6e6e6a);
     outline(ctx, 0, 0, w, h, 0x5c5c58);
+  });
+
+  // the cricket bat — drawn lying flat/horizontal so a thrown or swung
+  // instance just needs setAngle(), not a second orientation of the art
+  draw(scene, PropTex.BAT, (ctx, _w, h) => {
+    rect(ctx, 0, h / 2 - 1, 6, 2, 0x6b4a2f);
+    rect(ctx, 0, h / 2 - 1, 6, 1, 0x7c5838);
+    rect(ctx, 6, h / 2 - 1, 6, 2, 0xc9a565);
+    rect(ctx, 12, h / 2 - 2, 6, 4, 0xd8b878);
+    rect(ctx, 12, h / 2 - 2, 6, 1, 0xe8cc94);
   });
 }

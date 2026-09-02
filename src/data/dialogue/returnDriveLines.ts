@@ -3,6 +3,7 @@ import { PLAYER_NAME } from "@/config/constants";
 
 export const RETURN_DRIVE_START_LINES: DialogueScript = [
   { speaker: PLAYER_NAME, text: "Empty motorway. That's almost worse than the traffic." },
+  { speaker: PLAYER_NAME, text: "Keep it moving. Mind whatever's been left in the road." },
 ];
 
 export const BREAKDOWN_LINES: DialogueScript = [

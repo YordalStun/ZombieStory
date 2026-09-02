@@ -22,6 +22,14 @@ export interface CoworkerSpec {
   seated?: boolean;
   /** undefined = purely decorative crowd/desk figure, no prompt/dialogue. */
   interactable?: { prompt: string; range: number };
+  /**
+   * Where the CUBICLE texture's own drawn monitor actually ends up once
+   * flipped for this pod slot — not a fixed offset from the seated
+   * figure, since flipX/flipY move the monitor to a different corner per
+   * slot while the seated pose itself is never flipped (see drawSeated's
+   * doc comment). Only set for seated occupants.
+   */
+  monitorPos?: { x: number; y: number };
 }
 
 export interface OfficeLevel {
@@ -122,17 +130,23 @@ function placeDeskPod(
     const figureY = dy + slot.faceDy * 6;
 
     const occ = occupants[i];
+    // where the CUBICLE texture's own drawn monitor rect actually lands
+    // once flipped for this slot (see CoworkerSpec.monitorPos) — the
+    // monitor is offset +6px from the cubicle's center along the slot's
+    // facing axis, and stays vertically centered regardless of flipY
+    const monitorPos = { x: dx + slot.faceDx * 6, y: dy };
+
     if (occ.kind === "player_desk") {
       onPlayerDesk?.({ x: dx, y: dy });
       // the player's own monitor — every other occupied desk gets a glow
       // overlay added over its seated figure in OfficeScene, but there's no
-      // figure here to hang it off, so it's placed explicitly at the same
-      // relative offset, and doubles as the "use computer" interact point
+      // figure here to hang it off, so it's placed explicitly, and doubles
+      // as the "use computer" interact point
       props.push({
         id: "player_computer",
         tex: OfficeTex.MONITOR_GLOW,
-        x: figureX - 3,
-        y: figureY - 8,
+        x: monitorPos.x,
+        y: monitorPos.y,
         interactable: { prompt: "Use computer", range: 18 },
       });
       return;
@@ -155,6 +169,7 @@ function placeDeskPod(
         y: figureY,
         tex: variant,
         seated: true,
+        monitorPos,
         // same-pod seats sit ~38px apart at minimum (see figureX/Y above) —
         // a wider range here made neighbouring seats' catch circles overlap,
         // so "closest interactable" could pick the coworker next door
@@ -162,7 +177,7 @@ function placeDeskPod(
         interactable: { prompt: occ.label, range: 17 },
       });
     } else {
-      coworkers.push({ id: `${id}_extra`, x: figureX, y: figureY, tex: variant, seated: true });
+      coworkers.push({ id: `${id}_extra`, x: figureX, y: figureY, tex: variant, seated: true, monitorPos });
     }
 
     // roughly a third of occupied desks get something left on the desk

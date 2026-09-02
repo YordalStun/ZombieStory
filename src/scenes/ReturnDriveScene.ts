@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
 import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { PropTex } from "@/gfx/props";
+import { FigureTex } from "@/gfx/zombieFigure";
 import { ReturnDriveTex, ROAD_TILE_SIZE } from "@/gfx/returnDrive";
 import { PovTex } from "@/gfx/returnDrivePov";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
@@ -25,8 +26,27 @@ const CAR_Y = 190;
 const MIN_SPEED = 40;
 const MAX_SPEED = 170;
 const START_SPEED = 95;
-const BREAKDOWN_DISTANCE = 8500;
+const BREAKDOWN_DISTANCE = 3800;
 const CUTSCENE_DEPTH = 90000;
+const LANE_OFFSET = 55;
+
+interface RoadObstacle {
+  distance: number;
+  laneX: number;
+  isZombie: boolean;
+  img?: Phaser.GameObjects.Image;
+  hit: boolean;
+  resolved: boolean;
+}
+
+/** Broken-down cars and the odd zombie, left in the road — something to actually steer around rather than just holding a direction for a minute straight. */
+const OBSTACLE_PLAN: Array<{ distance: number; lane: number; isZombie: boolean }> = [
+  { distance: 850, lane: -1, isZombie: false },
+  { distance: 1550, lane: 1, isZombie: true },
+  { distance: 2250, lane: 0, isZombie: false },
+  { distance: 2900, lane: -1, isZombie: true },
+  { distance: 3450, lane: 1, isZombie: false },
+];
 
 /**
  * Path 1: a limited top-down drive (lane position + speed only — no U-turn,
@@ -50,6 +70,7 @@ export class ReturnDriveScene extends Phaser.Scene {
   private distance = 0;
   private busy = true;
   private brokenDown = false;
+  private obstacles: RoadObstacle[] = [];
 
   constructor() {
     super(SceneKeys.RETURN_DRIVE);
@@ -61,6 +82,13 @@ export class ReturnDriveScene extends Phaser.Scene {
     this.distance = 0;
     this.busy = true;
     this.brokenDown = false;
+    this.obstacles = OBSTACLE_PLAN.map((o) => ({
+      distance: o.distance,
+      laneX: ROAD_X + o.lane * LANE_OFFSET,
+      isZombie: o.isZombie,
+      hit: false,
+      resolved: false,
+    }));
   }
 
   create(): void {
@@ -122,9 +150,48 @@ export class ReturnDriveScene extends Phaser.Scene {
     if (this.cursors.down.isDown || this.wasdDown.isDown) this.speed = Math.max(MIN_SPEED, this.speed - 70 * dt);
 
     this.distance += this.speed * dt;
+    this.updateObstacles();
+
     if (this.distance >= BREAKDOWN_DISTANCE) {
       void this.beginBreakdown();
     }
+  }
+
+  /** Each obstacle's screen Y is driven purely by (its target distance minus distance travelled), so it scrolls in perfect sync with the road tile without needing its own tween. */
+  private updateObstacles(): void {
+    for (const ob of this.obstacles) {
+      if (ob.resolved) continue;
+      const y = CAR_Y - (ob.distance - this.distance);
+      if (y < -40) continue;
+
+      if (!ob.img) {
+        const img = this.add.image(ob.laneX, y, ob.isZombie ? FigureTex.ZOMBIE : PropTex.CAR).setDepth(4);
+        if (ob.isZombie) {
+          img.setScale(0.8);
+        } else {
+          img.setScale(0.75).setAngle(90 + Phaser.Math.Between(-20, 20)).setTint(0x8a8a86);
+        }
+        ob.img = img;
+      }
+      ob.img.y = y;
+
+      if (!ob.hit && Math.abs(y - CAR_Y) < 14 && Math.abs(ob.laneX - this.carX) < 22) {
+        ob.hit = true;
+        this.onObstacleHit();
+      }
+
+      if (y > GAME_HEIGHT + 40) {
+        ob.img.destroy();
+        ob.resolved = true;
+      }
+    }
+  }
+
+  /** No player-health system in this game — a miss just costs speed and a scare, not a fail state. */
+  private onObstacleHit(): void {
+    AudioManager.playSfx(SfxKey.BANG, { volume: 0.5 });
+    this.cameras.main.shake(150, 0.006);
+    this.speed = Math.max(MIN_SPEED, this.speed - 35);
   }
 
   private async beginBreakdown(): Promise<void> {

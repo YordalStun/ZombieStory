@@ -4,6 +4,7 @@ import { TILE_SIZE, DEPTH, GAME_WIDTH, GAME_HEIGHT, STORY_FLAGS } from "@/config
 import { TILESET_KEY, WALL_TILE_INDICES } from "@/gfx/tileset";
 import { OfficeTex } from "@/gfx/office";
 import { CoworkerTex } from "@/gfx/coworkerFigure";
+import { PropTex } from "@/gfx/props";
 import { buildOfficeLevel, type OfficeLevel, type CoworkerSpec } from "@/data/levels/officeLevel";
 import type { PropSpec } from "@/data/levels/apartmentLevel";
 import { Player, type MoveInput } from "@/core/entities/Player";
@@ -40,6 +41,8 @@ import {
   CHOSEN_PICKUP_LINES,
   WINDOW_POV_LINES,
   DAD_OUTSIDE_LINES,
+  DANA_GREETING_LINES,
+  DANA_HEADS_UP_LINES,
   DANA_BAT_LINES,
   BOSS_STOP_LINES,
   DANNY_DEFIANT_LINES,
@@ -251,8 +254,8 @@ export class OfficeScene extends Phaser.Scene {
     // a small pulsing glow over each occupied desk's monitor — the cubicle
     // texture's own screen rect is static, this is what reads as "on"
     for (const c of level.coworkers) {
-      if (!c.seated) continue;
-      const glow = this.add.image(c.x - 3, c.y - 8, OfficeTex.MONITOR_GLOW);
+      if (!c.seated || !c.monitorPos) continue;
+      const glow = this.add.image(c.monitorPos.x, c.monitorPos.y, OfficeTex.MONITOR_GLOW);
       glow.setDepth(DEPTH.ACTOR_SORT_BASE + c.y + 0.5);
       glow.setAlpha(0.7);
       this.lighting.makeLit(glow);
@@ -603,10 +606,12 @@ export class OfficeScene extends Phaser.Scene {
       const letter = dana.spec.tex.slice(-1).toUpperCase();
       const standTex = CoworkerTex[`STAND_${letter}` as keyof typeof CoworkerTex];
       dana.sprite.setTexture(standTex);
+      // stops a proper throwing distance away rather than right on top of
+      // Danny — the whole point is a visible arc between the two of them
       await new Promise<void>((resolve) => {
         this.tweens.add({
           targets: dana.sprite,
-          x: this.player.x + 14,
+          x: this.player.x + 42,
           y: this.player.y,
           duration: 900,
           ease: "Sine.easeInOut",
@@ -615,15 +620,58 @@ export class OfficeScene extends Phaser.Scene {
       });
     }
 
-    await DialoguePlayer.play(DANA_BAT_LINES);
-    AudioManager.playSfx(SfxKey.SWING, { volume: 0.5 });
-    this.cameras.main.shake(150, 0.004);
+    await DialoguePlayer.play(DANA_GREETING_LINES);
+    await DialoguePlayer.play(DANA_HEADS_UP_LINES);
+
+    if (dana) {
+      await this.throwBatVisual(dana.sprite.x, dana.sprite.y, this.player.x, this.player.y);
+    }
     WeaponManager.pickUp("cricket_bat");
-    await this.wait(300);
+
+    await DialoguePlayer.play(DANA_BAT_LINES);
+    await this.wait(200);
 
     if (dana) {
       this.tweens.add({ targets: dana.sprite, alpha: 0, duration: 400 });
     }
+  }
+
+  /** A real bat sprite, thrown in a visible two-stage arc (up, then down) and caught. */
+  private throwBatVisual(fromX: number, fromY: number, toX: number, toY: number): Promise<void> {
+    return new Promise((resolve) => {
+      const bat = this.add.image(fromX, fromY - 14, PropTex.BAT);
+      bat.setDepth(DEPTH.ACTOR_SORT_BASE + Math.max(fromY, toY) + 20);
+      this.lighting.makeLit(bat);
+      AudioManager.playSfx(SfxKey.SWING, { volume: 0.45, rate: 1.15 });
+
+      const midX = (fromX + toX) / 2;
+      const peakY = Math.min(fromY, toY) - 30;
+
+      this.tweens.add({
+        targets: bat,
+        x: midX,
+        y: peakY,
+        angle: 280,
+        duration: 260,
+        ease: "Sine.easeOut",
+        onComplete: () => {
+          this.tweens.add({
+            targets: bat,
+            x: toX,
+            y: toY - 14,
+            angle: 560,
+            duration: 260,
+            ease: "Sine.easeIn",
+            onComplete: () => {
+              AudioManager.playSfx(SfxKey.INTERACT, { volume: 0.45 });
+              this.cameras.main.shake(120, 0.003);
+              bat.destroy();
+              resolve();
+            },
+          });
+        },
+      });
+    });
   }
 
   /** Path 1 only: the boss physically intercepts Danny at the door — Danny goes anyway. */
