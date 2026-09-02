@@ -20,6 +20,7 @@ export const SfxKey = {
   GROAN: "sfx_groan",
   ELEVATOR_DING: "sfx_elevator_ding",
   OFFICE_AMBIENCE: "sfx_office_ambience",
+  TALK_BLIP: "sfx_talk_blip",
 } as const;
 
 export const MusicKey = {
@@ -50,6 +51,7 @@ const PACK_URLS: Partial<Record<string, string>> = {
   [SfxKey.GROAN]: "audio/sfx/sfx_groan.wav",
   [SfxKey.ELEVATOR_DING]: "audio/sfx/sfx_elevator_ding.wav",
   [SfxKey.OFFICE_AMBIENCE]: "audio/sfx/sfx_office_ambience.ogg",
+  [SfxKey.TALK_BLIP]: "audio/sfx/sfx_talk_blip.wav",
   [MusicKey.MENU]: "audio/music/music_menu.ogg",
 };
 
@@ -75,6 +77,8 @@ class AudioManagerClass {
   private currentMusic?: Phaser.Sound.BaseSound;
   private currentMusicKey?: string;
   private loopingBeds = new Map<string, LoopingBed>();
+  /** Temporary multiplier on top of the user's own volume settings — see duck(). */
+  private duckFactor = 1;
 
   async init(scene: Phaser.Scene): Promise<void> {
     if (this.ready) return;
@@ -99,6 +103,7 @@ class AudioManagerClass {
       [SfxKey.GROAN, synth.synthGroan()],
       [SfxKey.ELEVATOR_DING, synth.synthElevatorDing()],
       [SfxKey.OFFICE_AMBIENCE, synth.synthOfficeAmbience(10)],
+      [SfxKey.TALK_BLIP, synth.synthTalkBlip()],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],
     ];
@@ -151,7 +156,7 @@ class AudioManagerClass {
     const s = this.settings;
     this.scene.sound.play(this.resolveKey(key), {
       ...opts,
-      volume: (opts.volume ?? 1) * s.sfxVolume * s.masterVolume,
+      volume: (opts.volume ?? 1) * s.sfxVolume * s.masterVolume * this.duckFactor,
     });
   }
 
@@ -162,10 +167,34 @@ class AudioManagerClass {
     const s = this.settings;
     const sound = this.scene.sound.add(this.resolveKey(key), {
       loop: true,
-      volume: volume * s.sfxVolume * s.masterVolume,
+      volume: volume * s.sfxVolume * s.masterVolume * this.duckFactor,
     });
     sound.play();
     this.loopingBeds.set(id, { sound, baseVolume: volume, logicalKey: key });
+  }
+
+  /**
+   * Temporarily scales every loop/music bed down by `factor` (on top of the
+   * user's own volume settings) — used while the desk computer is open, so
+   * its own distinct sound effects aren't fighting the office ambience
+   * underneath. One-shot sfx triggered *after* this call also come out
+   * quieter (world sfx don't fire while controls are disabled anyway, but
+   * playSfx respects it regardless); call unduck() to restore.
+   */
+  duck(factor: number, tweenMs = 300): void {
+    this.duckFactor = factor;
+    if (!this.scene) return;
+    const s = this.settings;
+    if (this.currentMusic) {
+      this.scene.tweens.add({ targets: this.currentMusic, volume: s.musicVolume * s.masterVolume * factor, duration: tweenMs });
+    }
+    for (const bed of this.loopingBeds.values()) {
+      this.scene.tweens.add({ targets: bed.sound, volume: bed.baseVolume * s.sfxVolume * s.masterVolume * factor, duration: tweenMs });
+    }
+  }
+
+  unduck(tweenMs = 300): void {
+    this.duck(1, tweenMs);
   }
 
   /** Smoothly retargets a loop's base volume — e.g. rain/wind swelling as the player steps outside. */
@@ -199,7 +228,7 @@ class AudioManagerClass {
     const s = this.settings;
     const next = this.scene.sound.add(this.resolveKey(key), { loop: true, volume: 0 });
     next.play();
-    this.scene.tweens.add({ targets: next, volume: s.musicVolume * s.masterVolume, duration: fadeMs });
+    this.scene.tweens.add({ targets: next, volume: s.musicVolume * s.masterVolume * this.duckFactor, duration: fadeMs });
 
     const prev = this.currentMusic;
     if (prev) {
@@ -248,7 +277,7 @@ class AudioManagerClass {
         next.play();
         this.currentMusic = next;
       } else {
-        (this.currentMusic as Phaser.Sound.WebAudioSound).volume = s.musicVolume * s.masterVolume;
+        (this.currentMusic as Phaser.Sound.WebAudioSound).volume = s.musicVolume * s.masterVolume * this.duckFactor;
       }
     }
 
@@ -259,12 +288,12 @@ class AudioManagerClass {
         bed.sound.destroy();
         const sound = this.scene.sound.add(desiredKey, {
           loop: true,
-          volume: bed.baseVolume * s.sfxVolume * s.masterVolume,
+          volume: bed.baseVolume * s.sfxVolume * s.masterVolume * this.duckFactor,
         });
         sound.play();
         this.loopingBeds.set(id, { ...bed, sound });
       } else {
-        (bed.sound as Phaser.Sound.WebAudioSound).volume = bed.baseVolume * s.sfxVolume * s.masterVolume;
+        (bed.sound as Phaser.Sound.WebAudioSound).volume = bed.baseVolume * s.sfxVolume * s.masterVolume * this.duckFactor;
       }
     }
   }

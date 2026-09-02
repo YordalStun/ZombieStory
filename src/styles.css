@@ -23,6 +23,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* clicking around fast (dialogue, computer icons/mail rows) was
+     catching text selections — nothing in the game is meant to be
+     selected/copied, so turn it off everywhere at the root */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+#app * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
 }
 
 #game-root {

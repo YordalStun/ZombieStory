@@ -29,5 +29,14 @@ recordings from the original authors.
 - **Juhani Junkala** — ["Post Apocalyptic Wastelands (Loop Ready)"](https://opengameart.org/content/horror-atmosphere).
   Used for: `music_menu`.
 
+## In-house (not third-party — made for this project)
+
+- `sfx_talk_blip.wav` — the "pack" variant of the dialogue voice blip.
+  There's no single third-party recording behind this one: it's a second,
+  more textured render of the same idea as the live-generated version
+  (see `synth.ts`'s `synthTalkBlip()`), baked offline in Python/numpy for
+  extra grain. No attribution needed since it's original work, but noted
+  here so this file stays an accurate map of what came from where.
+
 Not currently sourced (still uses the generated sound in both modes):
 `sfx_car_engine`, `sfx_drip`, `music_tension`.

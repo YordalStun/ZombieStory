@@ -484,6 +484,135 @@ export function synthOfficeAmbience(duration = 10): Promise<AudioBuffer> {
 }
 
 /** Classic two-tone lift chime — a falling major third, each note with a bell-like decay. */
+/**
+ * A single short "gibberish" syllable — the Sims/Animal-Crossing trick for
+ * dialogue voices: one base blip, then AudioManager plays it back at a
+ * different `rate` per speaker so each character reads as having their own
+ * voice without needing a buffer per line or per character.
+ */
+export function synthTalkBlip(): Promise<AudioBuffer> {
+  const duration = 0.12;
+  return render(duration, (ctx) => {
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, 0);
+    gain.gain.exponentialRampToValueAtTime(0.5, 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.28, duration * 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.0001, duration);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(900, 0);
+    filter.Q.setValueAtTime(2.2, 0);
+    filter.connect(gain).connect(ctx.destination);
+
+    // a quick two-step "vowel" glide rather than a flat tone, so it reads
+    // as one spoken syllable and not a beep
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(240, 0);
+    osc.frequency.exponentialRampToValueAtTime(340, duration * 0.4);
+    osc.frequency.exponentialRampToValueAtTime(220, duration);
+    osc.connect(filter);
+    osc.start(0);
+    osc.stop(duration);
+
+    // a whisper of noise under the tone for texture/grain
+    const rasp = ctx.createBufferSource();
+    rasp.buffer = whiteNoiseBuffer(ctx, duration);
+    const raspFilter = ctx.createBiquadFilter();
+    raspFilter.type = "bandpass";
+    raspFilter.frequency.setValueAtTime(1400, 0);
+    raspFilter.Q.setValueAtTime(1.2, 0);
+    const raspGain = ctx.createGain();
+    raspGain.gain.setValueAtTime(0.06, 0);
+    raspGain.gain.exponentialRampToValueAtTime(0.0001, duration);
+    rasp.connect(raspFilter).connect(raspGain).connect(ctx.destination);
+    rasp.start(0);
+  });
+}
+
+/** Old-PC-style ascending startup chime for the desk computer. */
+export function synthComputerStartup(): Promise<AudioBuffer> {
+  const duration = 1.5;
+  const notes: Array<[freq: number, start: number]> = [
+    [261.63, 0], // C4
+    [329.63, 0.16], // E4
+    [392.0, 0.32], // G4
+    [523.25, 0.5], // C5, held
+  ];
+  return render(duration, (ctx) => {
+    for (const [freq, start] of notes) {
+      const gain = ctx.createGain();
+      const held = start >= 0.5;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.22, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + (held ? 0.9 : 0.22));
+      gain.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, start);
+      osc.connect(gain);
+      osc.start(start);
+      osc.stop(Math.min(duration, start + (held ? 0.95 : 0.25)));
+    }
+  });
+}
+
+/** A crisp, higher, distinctly "digital" click — the computer's own UI sound, not the game's. */
+export function synthComputerClick(): Promise<AudioBuffer> {
+  return render(0.07, (ctx) => {
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1400, 0);
+    osc.frequency.exponentialRampToValueAtTime(1800, 0.03);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, 0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, 0.06);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(0);
+    osc.stop(0.07);
+  });
+}
+
+/** A soft two-note "window open" blip for launching an app. */
+export function synthComputerOpen(): Promise<AudioBuffer> {
+  const duration = 0.22;
+  return render(duration, (ctx) => {
+    for (const [freq, start] of [
+      [660, 0],
+      [880, 0.08],
+    ] as const) {
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.16, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
+      gain.connect(ctx.destination);
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, start);
+      osc.connect(gain);
+      osc.start(start);
+      osc.stop(Math.min(duration, start + 0.13));
+    }
+  });
+}
+
+/** A short descending "nope" buzz for the dead/inert desktop icons. */
+export function synthComputerError(): Promise<AudioBuffer> {
+  return render(0.28, (ctx) => {
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(320, 0);
+    osc.frequency.linearRampToValueAtTime(160, 0.24);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.16, 0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, 0.26);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(0);
+    osc.stop(0.28);
+  });
+}
+
 export function synthElevatorDing(): Promise<AudioBuffer> {
   const duration = 1.3;
   return render(duration, (ctx) => {
