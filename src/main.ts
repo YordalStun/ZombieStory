@@ -11,6 +11,10 @@ import { ApartmentScene } from "@/scenes/ApartmentScene";
 import { MotorwayScene } from "@/scenes/MotorwayScene";
 import { OfficeScene } from "@/scenes/OfficeScene";
 import { LeaveBuildingScene } from "@/scenes/LeaveBuildingScene";
+import { ReturnDriveScene } from "@/scenes/ReturnDriveScene";
+import { DadDriveScene } from "@/scenes/DadDriveScene";
+import { CombatTutorialScene } from "@/scenes/CombatTutorialScene";
+import { HomeArrivalScene } from "@/scenes/HomeArrivalScene";
 import { initUIRoot, syncViewport } from "@/ui/dom/UIRoot";
 import { initDialogueBoxUI } from "@/ui/dom/DialogueBoxUI";
 import { initHUDUI } from "@/ui/dom/HUDUI";
@@ -38,7 +42,19 @@ const config: Phaser.Types.Core.GameConfig = {
     default: "arcade",
     arcade: { debug: false },
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, ApartmentScene, MotorwayScene, OfficeScene, LeaveBuildingScene],
+  scene: [
+    BootScene,
+    PreloadScene,
+    MainMenuScene,
+    ApartmentScene,
+    MotorwayScene,
+    OfficeScene,
+    LeaveBuildingScene,
+    ReturnDriveScene,
+    DadDriveScene,
+    CombatTutorialScene,
+    HomeArrivalScene,
+  ],
 };
 
 const game = new Phaser.Game(config);

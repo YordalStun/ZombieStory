@@ -10,6 +10,9 @@ import { generateFigureTextures } from "@/gfx/zombieFigure";
 import { generateDogTextures, createDogAnimations } from "@/gfx/dogSpriteGen";
 import { generateOfficeTextures } from "@/gfx/office";
 import { generateCoworkerTextures } from "@/gfx/coworkerFigure";
+import { generateReturnDrivePovTextures } from "@/gfx/returnDrivePov";
+import { generateReturnDriveTextures } from "@/gfx/returnDrive";
+import { generateDadDrivePovTextures } from "@/gfx/dadDrivePov";
 import { AudioManager } from "@/core/managers/AudioManager";
 import { showLoading, hideMenu } from "@/ui/dom/MenuUI";
 
@@ -36,6 +39,9 @@ export class PreloadScene extends Phaser.Scene {
     generateDogTextures(this);
     generateOfficeTextures(this);
     generateCoworkerTextures(this);
+    generateReturnDrivePovTextures(this);
+    generateReturnDriveTextures(this);
+    generateDadDrivePovTextures(this);
     createPlayerAnimations(this);
     createDogAnimations(this);
 
