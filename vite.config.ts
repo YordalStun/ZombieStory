@@ -15,5 +15,11 @@ export default defineConfig({
   build: {
     target: "es2020",
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        editor: path.resolve(__dirname, "editor.html"),
+      },
+    },
   },
 });

@@ -20,6 +20,28 @@ npm run typecheck # tsc --noEmit only
 
 Requires a browser with WebGL (used for the lighting pipeline — see below).
 
+## Level Editor
+
+A standalone level editor lives at `/editor.html` (e.g.
+`http://localhost:5173/editor.html` in dev, or `dist/editor.html` after a
+build) — a separate page/bundle from the game itself with its own entry
+point (`src/editor/`). It never reads or writes anything the running game
+depends on: it's purely for authoring and inspecting level data.
+
+Paint tiles and place any prop/office/coworker/figure texture the game
+knows about (pulled live from the same `src/gfx/*` generators the game
+uses, so previews are pixel-exact), set the player start / end point /
+zombie spawn markers, write an objectives checklist, and resize the grid.
+"Open built-in level…" loads one of the game's real shipped levels
+(Apartment, Office, Combat Tutorial, Leave Building) for reference —
+editing it never touches the game's own source, it just seeds the editor's
+in-memory working copy. **Save (.json)** downloads the current level to
+your computer; **Load (.json)** opens any level file back up, including
+ones you hand-edit or receive from someone else. The saved format
+(`src/editor/types.ts`'s `EditorLevelData`) mirrors the shape of the real
+`src/data/levels/*.ts` files closely enough to use as a starting point for
+new game levels by hand.
+
 ## What's playable right now
 
 Main Menu → New Game → a silent, dark bedroom lit only by a flickering TV
