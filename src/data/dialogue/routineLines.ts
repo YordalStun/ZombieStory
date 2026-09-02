@@ -19,7 +19,7 @@ export const SINK_LINES = {
 };
 
 export const KITCHEN_LINES = {
-  first: [{ speaker: PLAYER_NAME, text: "Half a granola bar. Breakfast of champions." }] as DialogueScript,
+  first: [{ speaker: PLAYER_NAME, text: "Half a cereal bar. Breakfast of champions." }] as DialogueScript,
   repeat: [{ speaker: PLAYER_NAME, text: "Nothing left. Should really buy groceries." }] as DialogueScript,
 };
 
@@ -48,7 +48,7 @@ export const PICTURE_LINES: DialogueScript = [
 ];
 
 export const LAVA_LAMP_ON_LINES: DialogueScript = [
-  { speaker: PLAYER_NAME, text: "Mesmerizing. Slightly hypnotic. Definitely not helping me focus." },
+  { speaker: PLAYER_NAME, text: "Mesmerising. Slightly hypnotic. Definitely not helping me focus." },
 ];
 
 export const LAVA_LAMP_OFF_LINES: DialogueScript = [
@@ -56,11 +56,11 @@ export const LAVA_LAMP_OFF_LINES: DialogueScript = [
 ];
 
 export const COMPUTER_LINES: DialogueScript = [
-  { speaker: PLAYER_NAME, text: "Forty-some messages overnight. Everyone's asking the same thing: are you seeing this?" },
+  { speaker: PLAYER_NAME, text: "Forty-odd messages overnight. Everyone's asking the same thing: are you seeing this?" },
 ];
 
 export const DOG_PET_LINES: DialogueScript = [
-  { speaker: PLAYER_NAME, text: "Hey, buddy. Yeah, I know. Weird morning." },
+  { speaker: PLAYER_NAME, text: "Hey, mate. Yeah, I know. Weird morning." },
 ];
 
 export const DOG_WAKE_LINES: DialogueScript = [
