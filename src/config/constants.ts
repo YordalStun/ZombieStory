@@ -35,13 +35,29 @@ export const STORY_FLAGS = {
   ATE: "ate",
   GRABBED_KEYS: "grabbedKeys",
   ENTERED_CAR: "enteredCar",
+  /** true = drove home yourself; false/absent = got picked up by Dad. */
+  PATH_DRIVE: "pathDrive",
 } as const;
 
-export type Checkpoint = "NIGHT_CUTSCENE" | "MORNING_ROUTINE" | "MOTORWAY" | "OFFICE";
+export type Checkpoint =
+  | "NIGHT_CUTSCENE"
+  | "MORNING_ROUTINE"
+  | "MOTORWAY"
+  | "OFFICE"
+  | "LEAVE_BUILDING"
+  | "RETURN_DRIVE"
+  | "DAD_DRIVE"
+  | "COMBAT_TUTORIAL"
+  | "HOME_ARRIVAL";
 
 export const CHECKPOINTS: Record<Checkpoint, Checkpoint> = {
   NIGHT_CUTSCENE: "NIGHT_CUTSCENE",
   MORNING_ROUTINE: "MORNING_ROUTINE",
   MOTORWAY: "MOTORWAY",
   OFFICE: "OFFICE",
+  LEAVE_BUILDING: "LEAVE_BUILDING",
+  RETURN_DRIVE: "RETURN_DRIVE",
+  DAD_DRIVE: "DAD_DRIVE",
+  COMBAT_TUTORIAL: "COMBAT_TUTORIAL",
+  HOME_ARRIVAL: "HOME_ARRIVAL",
 };

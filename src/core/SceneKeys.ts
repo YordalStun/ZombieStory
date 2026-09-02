@@ -5,6 +5,11 @@ export const SceneKeys = {
   APARTMENT: "Apartment",
   MOTORWAY: "Motorway",
   OFFICE: "Office",
+  LEAVE_BUILDING: "LeaveBuilding",
+  RETURN_DRIVE: "ReturnDrive",
+  DAD_DRIVE: "DadDrive",
+  COMBAT_TUTORIAL: "CombatTutorial",
+  HOME_ARRIVAL: "HomeArrival",
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

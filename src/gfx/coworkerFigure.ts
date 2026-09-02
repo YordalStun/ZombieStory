@@ -30,6 +30,8 @@ export const CoworkerTex = {
   SEAT_H: "fig_coworker_seat_h",
   SEAT_I: "fig_coworker_seat_i",
   SEAT_J: "fig_coworker_seat_j",
+  STAND_K: "fig_coworker_stand_k",
+  SEAT_K: "fig_coworker_seat_k",
 } as const;
 
 export type CoworkerVariant = (typeof CoworkerTex)[keyof typeof CoworkerTex];
@@ -55,6 +57,9 @@ export const COWORKER_STYLES: CoworkerStyle[] = [
   { letter: "h", gender: "f", shirt: 0x4a8a7a, shirtShadow: 0x386a5e, pants: 0x2a2a30, hair: 0x1a1a1a, skin: 0x9d7355 },
   { letter: "i", gender: "m", shirt: 0x8a3a3a, shirtShadow: 0x6a2c2c, pants: 0x2e2e34, hair: 0x6b5a44, skin: 0xe0ac81 },
   { letter: "j", gender: "f", shirt: 0x6a8a3a, shirtShadow: 0x506a2c, pants: 0x2a2a30, hair: 0x2a2018, skin: 0x9d7355 },
+  // the boss — a sharp dark blazer instead of the others' casual shirts is
+  // the only cue this needs; same draw functions, no new pose
+  { letter: "k", gender: "m", shirt: 0x2c3038, shirtShadow: 0x1c1e24, pants: 0x18181c, hair: 0x555555, skin: 0xc78a5e },
 ];
 
 export const COWORKER_STAND_VARIANTS: CoworkerVariant[] = COWORKER_STYLES.map(

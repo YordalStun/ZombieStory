@@ -10,12 +10,14 @@ import { MainMenuScene } from "@/scenes/MainMenuScene";
 import { ApartmentScene } from "@/scenes/ApartmentScene";
 import { MotorwayScene } from "@/scenes/MotorwayScene";
 import { OfficeScene } from "@/scenes/OfficeScene";
+import { LeaveBuildingScene } from "@/scenes/LeaveBuildingScene";
 import { initUIRoot, syncViewport } from "@/ui/dom/UIRoot";
 import { initDialogueBoxUI } from "@/ui/dom/DialogueBoxUI";
 import { initHUDUI } from "@/ui/dom/HUDUI";
 import { initFadeUI } from "@/ui/dom/FadeUI";
 import { initComputerUI } from "@/ui/dom/ComputerUI";
 import { initWeaponUI } from "@/ui/dom/WeaponUI";
+import { initPathChoiceUI } from "@/ui/dom/PathChoiceUI";
 
 // Lighting (Light2D) is WebGL-only in Phaser 3, hence an explicit WEBGL
 // context rather than AUTO — see LightingManager.
@@ -36,7 +38,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: "arcade",
     arcade: { debug: false },
   },
-  scene: [BootScene, PreloadScene, MainMenuScene, ApartmentScene, MotorwayScene, OfficeScene],
+  scene: [BootScene, PreloadScene, MainMenuScene, ApartmentScene, MotorwayScene, OfficeScene, LeaveBuildingScene],
 };
 
 const game = new Phaser.Game(config);
@@ -47,6 +49,7 @@ initHUDUI();
 initFadeUI();
 initComputerUI();
 initWeaponUI();
+initPathChoiceUI();
 
 const resync = () => syncViewport(game);
 window.addEventListener("resize", resync);

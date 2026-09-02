@@ -34,6 +34,7 @@ export const PropTex = {
   MIRROR: "prop_mirror",
   TOILET: "prop_toilet",
   BATHTUB: "prop_bathtub",
+  PILLAR: "prop_pillar",
 } as const;
 
 // Display sizes, in px, at native (unscaled) resolution — used for physics
@@ -71,6 +72,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.MIRROR]: { w: 10, h: 8 },
   [PropTex.TOILET]: { w: 12, h: 14 },
   [PropTex.BATHTUB]: { w: 16, h: 30 },
+  [PropTex.PILLAR]: { w: 14, h: 14 },
 };
 
 function draw(
@@ -348,5 +350,13 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 1, 1, w - 2, h - 2, Palette.sinkWhite);
     rect(ctx, 3, 3, w - 6, h - 6, 0xc9d6d6);
     rect(ctx, w / 2 - 2, 1, 4, 3, 0x8a8f90);
+  });
+
+  // bare concrete support column — car parks, not homes or offices
+  draw(scene, PropTex.PILLAR, (ctx, w, h) => {
+    rect(ctx, 0, 0, w, h, 0x8a8a86);
+    rect(ctx, 0, 0, w, 3, 0x9d9d98);
+    rect(ctx, 0, h - 3, w, 3, 0x6e6e6a);
+    outline(ctx, 0, 0, w, h, 0x5c5c58);
   });
 }

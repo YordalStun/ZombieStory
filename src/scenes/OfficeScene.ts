@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
-import { TILE_SIZE, DEPTH, GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
+import { TILE_SIZE, DEPTH, GAME_WIDTH, GAME_HEIGHT, STORY_FLAGS } from "@/config/constants";
 import { TILESET_KEY, WALL_TILE_INDICES } from "@/gfx/tileset";
 import { OfficeTex } from "@/gfx/office";
+import { CoworkerTex } from "@/gfx/coworkerFigure";
 import { buildOfficeLevel, type OfficeLevel, type CoworkerSpec } from "@/data/levels/officeLevel";
 import type { PropSpec } from "@/data/levels/apartmentLevel";
 import { Player, type MoveInput } from "@/core/entities/Player";
@@ -10,6 +11,7 @@ import { LightingManager } from "@/core/managers/LightingManager";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
+import { WeaponManager } from "@/core/managers/WeaponManager";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
@@ -32,11 +34,22 @@ import {
   AT_DESK_LINES,
   NOT_YET_LINES,
 } from "@/data/dialogue/officeLines";
+import {
+  HEAD_HOME_LINES,
+  CHOSEN_DRIVE_LINES,
+  CHOSEN_PICKUP_LINES,
+  WINDOW_POV_LINES,
+  DAD_OUTSIDE_LINES,
+  DANA_BAT_LINES,
+  BOSS_STOP_LINES,
+  DANNY_DEFIANT_LINES,
+} from "@/data/dialogue/officeExitLines";
 import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { openComputer } from "@/ui/dom/ComputerUI";
+import { showPathChoice } from "@/ui/dom/PathChoiceUI";
 
 interface PropEntry {
   spec: PropSpec;
@@ -80,6 +93,8 @@ export class OfficeScene extends Phaser.Scene {
   private deskComputerUnlocked = false;
   private emailsRead = false;
   private newsRead = false;
+  private pathChosen = false;
+  private pathDrive = false;
 
   constructor() {
     super(SceneKeys.OFFICE);
@@ -96,6 +111,8 @@ export class OfficeScene extends Phaser.Scene {
     this.deskComputerUnlocked = false;
     this.emailsRead = false;
     this.newsRead = false;
+    this.pathChosen = false;
+    this.pathDrive = false;
   }
 
   create(): void {
@@ -381,8 +398,8 @@ export class OfficeScene extends Phaser.Scene {
     });
 
     this.player.setControlsEnabled(true);
-    if (this.emailsRead && this.newsRead) {
-      ObjectiveManager.clear();
+    if (this.emailsRead && this.newsRead && !this.pathChosen) {
+      void this.beginHeadHomeSequence();
     }
   }
 
@@ -466,6 +483,10 @@ export class OfficeScene extends Phaser.Scene {
       await this.useComputer();
       return;
     }
+    if (id === "office_exit") {
+      await this.handleExit();
+      return;
+    }
     const lines = COWORKER_LINES[id];
     if (lines) await this.playLinesBlocking(lines);
   }
@@ -525,6 +546,122 @@ export class OfficeScene extends Phaser.Scene {
     this.findingDesk = true;
     this.deskArrow = this.add.image(this.player.x, this.player.y - 22, OfficeTex.DESK_ARROW).setDepth(ARROW_DEPTH);
     this.lighting.makeLit(this.deskArrow);
+  }
+
+  /** Fires once both emails and the news have been read — decide how to get home, then unlock the exit. */
+  private async beginHeadHomeSequence(): Promise<void> {
+    ObjectiveManager.clear();
+    this.player.setControlsEnabled(false);
+    EventBus.emit(Events.PROMPT_HIDE);
+
+    await DialoguePlayer.play(HEAD_HOME_LINES);
+
+    const choice = await showPathChoice("How do you want to get home?", [
+      { id: "drive", label: "Text Mum & Dad", hint: "Drive yourself." },
+      { id: "pickup", label: "Text Dad", hint: "Get him to come and collect you." },
+    ]);
+    this.pathDrive = choice === "drive";
+    SaveManager.setFlag(STORY_FLAGS.PATH_DRIVE, this.pathDrive);
+
+    if (this.pathDrive) {
+      await DialoguePlayer.play(CHOSEN_DRIVE_LINES);
+    } else {
+      await DialoguePlayer.play(CHOSEN_PICKUP_LINES);
+      await this.windowWaitBeat();
+    }
+
+    this.pathChosen = true;
+    this.player.setControlsEnabled(true);
+    ObjectiveManager.start("Head home", [{ id: "leave_office", label: "Get to the exit" }], []);
+  }
+
+  /** Path 2 only: a short "waiting for Dad to reply" beat — moody pause, then his text comes through. */
+  private async windowWaitBeat(): Promise<void> {
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05060a, 0.5);
+    overlay.setScrollFactor(0).setDepth(90000).setAlpha(0);
+
+    await new Promise<void>((resolve) => {
+      this.tweens.add({ targets: overlay, alpha: 1, duration: 500, onComplete: () => resolve() });
+    });
+    await this.wait(500);
+    await DialoguePlayer.play(WINDOW_POV_LINES);
+    await this.wait(700);
+    AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.5, rate: 0.6 });
+    await DialoguePlayer.play(DAD_OUTSIDE_LINES);
+    await this.wait(300);
+    await new Promise<void>((resolve) => {
+      this.tweens.add({ targets: overlay, alpha: 0, duration: 500, onComplete: () => resolve() });
+    });
+    overlay.destroy();
+  }
+
+  /** Path 2 only: Dana jogs over and tosses Danny the cricket bat before he heads out. */
+  private async giveBatBeat(): Promise<void> {
+    const dana = this.coworkersById.get("dana");
+    if (dana) {
+      this.tweens.killTweensOf(dana.sprite);
+      const letter = dana.spec.tex.slice(-1).toUpperCase();
+      const standTex = CoworkerTex[`STAND_${letter}` as keyof typeof CoworkerTex];
+      dana.sprite.setTexture(standTex);
+      await new Promise<void>((resolve) => {
+        this.tweens.add({
+          targets: dana.sprite,
+          x: this.player.x + 14,
+          y: this.player.y,
+          duration: 900,
+          ease: "Sine.easeInOut",
+          onComplete: () => resolve(),
+        });
+      });
+    }
+
+    await DialoguePlayer.play(DANA_BAT_LINES);
+    AudioManager.playSfx(SfxKey.SWING, { volume: 0.5 });
+    this.cameras.main.shake(150, 0.004);
+    WeaponManager.pickUp("cricket_bat");
+    await this.wait(300);
+
+    if (dana) {
+      this.tweens.add({ targets: dana.sprite, alpha: 0, duration: 400 });
+    }
+  }
+
+  /** Path 1 only: the boss physically intercepts Danny at the door — Danny goes anyway. */
+  private async bossInterceptBeat(): Promise<void> {
+    const exit = this.propsById.get("office_exit")!;
+    const boss = this.add.image(exit.spec.x, exit.spec.y + 18, CoworkerTex.STAND_K);
+    boss.setDepth(DEPTH.ACTOR_SORT_BASE + exit.spec.y + 18);
+    this.lighting.makeLit(boss);
+
+    await this.wait(250);
+    await DialoguePlayer.play(BOSS_STOP_LINES);
+    await DialoguePlayer.play(DANNY_DEFIANT_LINES);
+
+    await new Promise<void>((resolve) => {
+      this.tweens.add({ targets: boss, alpha: 0, x: boss.x - 16, duration: 500, onComplete: () => resolve() });
+    });
+    boss.destroy();
+  }
+
+  private async handleExit(): Promise<void> {
+    if (!this.pathChosen) {
+      await this.playLinesBlocking(NOT_YET_LINES);
+      return;
+    }
+
+    this.player.setControlsEnabled(false);
+    EventBus.emit(Events.PROMPT_HIDE);
+
+    if (this.pathDrive) {
+      await this.bossInterceptBeat();
+    } else {
+      await this.giveBatBeat();
+    }
+
+    ObjectiveManager.complete("leave_office");
+    await fadeOut(1000);
+    SaveManager.saveCheckpoint("LEAVE_BUILDING", { [STORY_FLAGS.PATH_DRIVE]: this.pathDrive });
+    this.scene.start(SceneKeys.LEAVE_BUILDING, { variant: this.pathDrive ? "carpark" : "forecourt" });
   }
 
   private wait(ms: number): Promise<void> {

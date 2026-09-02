@@ -269,6 +269,17 @@ export function buildOfficeLevel(): OfficeLevel {
   // ---- lobby (rows 1-6): where the player steps out after the elevator ----
   const reception = tileCenter(20, 3);
   props.push({ id: "reception_desk", tex: OfficeTex.RECEPTION_DESK, x: reception.x, y: reception.y, solid: true });
+  // the way out — behind the player at the elevator-arrival spawn point,
+  // and the only prop that ends the scene
+  const exitDoors = tileCenter(20, 1.4);
+  props.push({
+    id: "office_exit",
+    tex: OfficeTex.EXIT_DOORS,
+    x: exitDoors.x,
+    y: exitDoors.y,
+    solid: true,
+    interactable: { prompt: "Leave the office", range: 26 },
+  });
   const receptionRug = tileCenter(20, 3);
   props.push({ id: "reception_rug", tex: PropTex.RUG, x: receptionRug.x, y: receptionRug.y, floorDecal: true, tint: 0x4a3020 });
   for (const px of [12, 28]) {

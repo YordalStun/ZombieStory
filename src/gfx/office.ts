@@ -25,6 +25,7 @@ export const OfficeTex = {
   DESK_ARROW: "office_desk_arrow",
   ELEVATOR_WALL: "office_elevator_wall",
   ELEVATOR_DOOR: "office_elevator_door",
+  EXIT_DOORS: "office_exit_doors",
 } as const;
 
 export const OfficeTexSize: Record<string, { w: number; h: number }> = {
@@ -48,6 +49,7 @@ export const OfficeTexSize: Record<string, { w: number; h: number }> = {
   [OfficeTex.CALENDAR]: { w: 10, h: 4 },
   [OfficeTex.PAPER_STACK]: { w: 10, h: 8 },
   [OfficeTex.DESK_ARROW]: { w: 14, h: 14 },
+  [OfficeTex.EXIT_DOORS]: { w: 20, h: 18 },
 };
 
 function draw(
@@ -278,6 +280,19 @@ export function generateOfficeTextures(scene: Phaser.Scene): void {
   // points right by default (0deg) — OfficeScene rotates it per-frame toward
   // the target with setRotation(), so the base art just needs a clean,
   // legible triangle
+  // small world-scale doors (unlike ELEVATOR_WALL/DOOR below, which are
+  // full-screen and only ever used pinned to the camera for the arrival
+  // cutscene) — this is the real, walkable, re-interactable way out.
+  draw(scene, OfficeTex.EXIT_DOORS, (ctx, w, h) => {
+    rect(ctx, 3, 0, w - 6, 3, 0x1a3a22);
+    rect(ctx, 5, 1, w - 10, 1, 0x5fe07a);
+    rect(ctx, 1, 4, w - 2, h - 4, 0x9aa2b6);
+    rect(ctx, 1, 4, (w - 2) / 2 - 1, h - 4, 0x8a92a6);
+    rect(ctx, w / 2 + 1, 4, (w - 2) / 2 - 1, h - 4, 0x8a92a6);
+    rect(ctx, w / 2 - 1, 4, 2, h - 4, 0x5a6272);
+    outline(ctx, 1, 4, w - 2, h - 4, 0x5a6272);
+  });
+
   draw(scene, OfficeTex.DESK_ARROW, (ctx, w, h) => {
     ctx.fillStyle = "#ffd15c";
     ctx.beginPath();
