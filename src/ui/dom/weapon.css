@@ -1,0 +1,87 @@
+/* ---------- weapon stats panel ("I" to toggle) ---------- */
+
+.weapon-panel {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: clamp(200px, 22vw, 300px);
+  max-height: 70vh;
+  overflow-y: auto;
+  background: rgba(8, 8, 12, 0.82);
+  border: 2px solid rgba(240, 236, 226, 0.4);
+  padding: 10px 14px 14px;
+  pointer-events: auto;
+}
+
+.weapon-panel.hidden {
+  display: none;
+}
+
+.weapon-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(11px, 0.9vw, 13px);
+  color: #ffd15c;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid rgba(240, 236, 226, 0.25);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.weapon-panel-hint {
+  font-family: "VT323", monospace;
+  font-size: clamp(11px, 0.9vw, 14px);
+  color: #8a8578;
+  letter-spacing: normal;
+}
+
+.weapon-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weapon-panel-row {
+  border: 1px solid rgba(240, 236, 226, 0.2);
+  background: rgba(240, 236, 226, 0.04);
+  padding: 6px 8px;
+}
+
+.weapon-panel-row.equipped {
+  border-color: rgba(255, 209, 92, 0.6);
+}
+
+.weapon-panel-name {
+  font-size: clamp(15px, 1.3vw, 19px);
+  color: #f0ece2;
+}
+
+.weapon-panel-equipped-tag {
+  margin-left: 6px;
+  font-size: clamp(10px, 0.8vw, 12px);
+  color: #ffd15c;
+  border: 1px solid rgba(255, 209, 92, 0.5);
+  padding: 0 4px;
+  vertical-align: middle;
+}
+
+.weapon-panel-desc {
+  font-size: clamp(12px, 1vw, 15px);
+  color: #b8b3a6;
+  margin: 2px 0 6px;
+}
+
+.weapon-panel-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: clamp(12px, 1vw, 15px);
+  color: #cfcabd;
+}
+
+.weapon-panel-stats b {
+  color: #f0ece2;
+}

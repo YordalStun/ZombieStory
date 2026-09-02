@@ -644,3 +644,22 @@ export function synthElevatorDing(): Promise<AudioBuffer> {
     }
   });
 }
+
+/** A quick air whoosh — bandpass-filtered noise sweeping downward — for a weapon swing. */
+export function synthSwing(): Promise<AudioBuffer> {
+  return render(0.22, (ctx) => {
+    const noise = ctx.createBufferSource();
+    noise.buffer = whiteNoiseBuffer(ctx, 0.22);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(2600, 0);
+    filter.frequency.exponentialRampToValueAtTime(500, 0.18);
+    filter.Q.setValueAtTime(1.1, 0);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, 0);
+    gain.gain.exponentialRampToValueAtTime(0.5, 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, 0.2);
+    noise.connect(filter).connect(gain).connect(ctx.destination);
+    noise.start(0);
+  });
+}

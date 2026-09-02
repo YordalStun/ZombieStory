@@ -21,6 +21,7 @@ export const SfxKey = {
   ELEVATOR_DING: "sfx_elevator_ding",
   OFFICE_AMBIENCE: "sfx_office_ambience",
   TALK_BLIP: "sfx_talk_blip",
+  SWING: "sfx_swing",
 } as const;
 
 export const MusicKey = {
@@ -104,6 +105,7 @@ class AudioManagerClass {
       [SfxKey.ELEVATOR_DING, synth.synthElevatorDing()],
       [SfxKey.OFFICE_AMBIENCE, synth.synthOfficeAmbience(10)],
       [SfxKey.TALK_BLIP, synth.synthTalkBlip()],
+      [SfxKey.SWING, synth.synthSwing()],
       [MusicKey.MENU, synth.synthPad(8, synth.MENU_THEME_FREQS, 0.22)],
       [MusicKey.TENSION, synth.synthPad(10, synth.TENSION_BED_FREQS, 0.16)],
     ];

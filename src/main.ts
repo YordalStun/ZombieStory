@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import "@/styles.css";
 import "@/ui/dom/ui.css";
 import "@/ui/dom/computer.css";
+import "@/ui/dom/weapon.css";
 import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { BootScene } from "@/scenes/BootScene";
 import { PreloadScene } from "@/scenes/PreloadScene";
@@ -14,6 +15,7 @@ import { initDialogueBoxUI } from "@/ui/dom/DialogueBoxUI";
 import { initHUDUI } from "@/ui/dom/HUDUI";
 import { initFadeUI } from "@/ui/dom/FadeUI";
 import { initComputerUI } from "@/ui/dom/ComputerUI";
+import { initWeaponUI } from "@/ui/dom/WeaponUI";
 
 // Lighting (Light2D) is WebGL-only in Phaser 3, hence an explicit WEBGL
 // context rather than AUTO — see LightingManager.
@@ -44,6 +46,7 @@ initDialogueBoxUI();
 initHUDUI();
 initFadeUI();
 initComputerUI();
+initWeaponUI();
 
 const resync = () => syncViewport(game);
 window.addEventListener("resize", resync);

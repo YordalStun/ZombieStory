@@ -33,4 +33,7 @@ export const Events = {
 
   // Settings (DOM -> AudioManager, bidirectional)
   SETTINGS_CHANGED: "settings:changed",
+
+  // Combat (Phaser scene / manager -> DOM)
+  WEAPONS_CHANGED: "weapons:changed",
 } as const;
