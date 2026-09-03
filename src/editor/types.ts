@@ -22,6 +22,34 @@ export interface EditorObjectives {
   steps: ObjectiveStep[];
 }
 
+/**
+ * A light switch a family member walks to and flips (see
+ * familyHouseLevel.ts's SwitchSpec / HouseDefenseScene) — its own (x, y) is
+ * where the switch prop sits, `lightId`/`lightX`/`lightY` are the separate
+ * room-center ceiling light it toggles, and `spawnX`/`spawnY` is the
+ * doorway point the family member walks in from and back out to. Unlike
+ * the single playerStart/endPoint/zombieSpawn markers, a level can have
+ * several of these, so they're a plain array rather than a MarkerKind.
+ */
+export interface EditorSwitchSpec {
+  id: string;
+  familyMemberId: string;
+  x: number;
+  y: number;
+  lightId: string;
+  lightX: number;
+  lightY: number;
+  spawnX: number;
+  spawnY: number;
+}
+
+/** Where zombies force their way in (a broken window/door) — see FloorLevel.breachPoints. Also a plain array, for the same reason as switches. */
+export interface EditorBreachPoint {
+  id: string;
+  x: number;
+  y: number;
+}
+
 export interface EditorLevelData {
   formatVersion: 1;
   meta: {
@@ -36,6 +64,8 @@ export interface EditorLevelData {
   playerStart: { x: number; y: number } | null;
   endPoint: { x: number; y: number } | null;
   zombieSpawn: { x: number; y: number } | null;
+  switches: EditorSwitchSpec[];
+  breachPoints: EditorBreachPoint[];
   ambientLevel: number;
   objectives: EditorObjectives;
 }
@@ -57,6 +87,8 @@ export function newLevel(width = 24, height = 16): EditorLevelData {
     playerStart: null,
     endPoint: null,
     zombieSpawn: null,
+    switches: [],
+    breachPoints: [],
     ambientLevel: 1,
     objectives: { title: "", steps: [] },
   };

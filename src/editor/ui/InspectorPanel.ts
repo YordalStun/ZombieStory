@@ -1,7 +1,14 @@
 import type { EditorScene, MarkerKind } from "@/editor/EditorScene";
-import type { PropSpec } from "@/editor/types";
+import type { PropSpec, EditorSwitchSpec, EditorBreachPoint } from "@/editor/types";
 
-type Selection = { kind: "prop"; index: number } | { kind: "marker"; which: MarkerKind } | null;
+type Selection =
+  | { kind: "prop"; index: number }
+  | { kind: "marker"; which: MarkerKind }
+  | { kind: "switch"; index: number }
+  | { kind: "breach"; index: number }
+  | null;
+
+const FAMILY_MEMBER_OPTIONS = ["mum", "dad", "sister", "brother"];
 
 /**
  * Which panel's own input just pushed a change to the scene, if any.
@@ -58,14 +65,168 @@ function buildInspectorTab(container: HTMLElement, scene: EditorScene): void {
     ? { kind: "prop", index: scene.selectedPropIndex }
     : scene.selectedMarker
       ? { kind: "marker", which: scene.selectedMarker }
-      : null;
+      : scene.selectedSwitchIndex !== null
+        ? { kind: "switch", index: scene.selectedSwitchIndex }
+        : scene.selectedBreachIndex !== null
+          ? { kind: "breach", index: scene.selectedBreachIndex }
+          : null;
 
   if (!sel) {
     const empty = document.createElement("div");
     empty.className = "inspector-empty";
-    empty.textContent = "Nothing selected.\nClick a prop or marker on the canvas, or pick a swatch from the palette to place something new.";
+    empty.textContent = "Nothing selected.\nClick a prop, marker, switch, or breach point on the canvas, or pick a swatch from the palette to place something new.";
     empty.style.whiteSpace = "pre-line";
     container.appendChild(empty);
+    return;
+  }
+
+  if (sel.kind === "switch") {
+    const spec: EditorSwitchSpec = scene.getLevel().switches[sel.index];
+    if (!spec) return;
+    const update = (patch: Partial<EditorSwitchSpec>) => withPanelEdit(container, () => scene.updateSelectedSwitch(patch));
+
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.textContent = "Switch";
+    container.appendChild(title);
+
+    const idF = field("ID");
+    idF.input.type = "text";
+    idF.input.value = spec.id;
+    idF.input.onchange = () => update({ id: idF.input.value });
+    container.appendChild(idF.wrap);
+
+    const famWrap = document.createElement("div");
+    famWrap.className = "field";
+    const famLabel = document.createElement("label");
+    famLabel.textContent = "Family member";
+    const famSelect = document.createElement("select");
+    const blankOpt = document.createElement("option");
+    blankOpt.value = "";
+    blankOpt.textContent = "(none)";
+    famSelect.appendChild(blankOpt);
+    FAMILY_MEMBER_OPTIONS.forEach((id) => {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = id;
+      famSelect.appendChild(opt);
+    });
+    famSelect.value = FAMILY_MEMBER_OPTIONS.includes(spec.familyMemberId) ? spec.familyMemberId : "";
+    famSelect.onchange = () => update({ familyMemberId: famSelect.value });
+    famWrap.appendChild(famLabel);
+    famWrap.appendChild(famSelect);
+    container.appendChild(famWrap);
+
+    const posTitle = document.createElement("div");
+    posTitle.className = "section-title";
+    posTitle.textContent = "Switch position (draggable on canvas)";
+    container.appendChild(posTitle);
+    const posRow = document.createElement("div");
+    posRow.className = "field-row";
+    const xF = field("X");
+    xF.input.type = "number";
+    xF.input.value = String(Math.round(spec.x));
+    xF.input.onchange = () => update({ x: Number(xF.input.value) });
+    const yF = field("Y");
+    yF.input.type = "number";
+    yF.input.value = String(Math.round(spec.y));
+    yF.input.onchange = () => update({ y: Number(yF.input.value) });
+    posRow.appendChild(xF.wrap);
+    posRow.appendChild(yF.wrap);
+    container.appendChild(posRow);
+
+    const lightTitle = document.createElement("div");
+    lightTitle.className = "section-title";
+    lightTitle.textContent = "Light this switch controls";
+    container.appendChild(lightTitle);
+    const lightIdF = field("Light ID");
+    lightIdF.input.type = "text";
+    lightIdF.input.value = spec.lightId;
+    lightIdF.input.onchange = () => update({ lightId: lightIdF.input.value });
+    container.appendChild(lightIdF.wrap);
+    const lightPosRow = document.createElement("div");
+    lightPosRow.className = "field-row";
+    const lxF = field("Light X");
+    lxF.input.type = "number";
+    lxF.input.value = String(Math.round(spec.lightX));
+    lxF.input.onchange = () => update({ lightX: Number(lxF.input.value) });
+    const lyF = field("Light Y");
+    lyF.input.type = "number";
+    lyF.input.value = String(Math.round(spec.lightY));
+    lyF.input.onchange = () => update({ lightY: Number(lyF.input.value) });
+    lightPosRow.appendChild(lxF.wrap);
+    lightPosRow.appendChild(lyF.wrap);
+    container.appendChild(lightPosRow);
+
+    const spawnTitle = document.createElement("div");
+    spawnTitle.className = "section-title";
+    spawnTitle.textContent = "Family member's doorway point";
+    container.appendChild(spawnTitle);
+    const spawnHint = document.createElement("div");
+    spawnHint.className = "hint";
+    spawnHint.textContent = "Where they walk in from and back out to — should be inside the same room as the switch.";
+    container.appendChild(spawnHint);
+    const spawnRow = document.createElement("div");
+    spawnRow.className = "field-row";
+    const sxF = field("Spawn X");
+    sxF.input.type = "number";
+    sxF.input.value = String(Math.round(spec.spawnX));
+    sxF.input.onchange = () => update({ spawnX: Number(sxF.input.value) });
+    const syF = field("Spawn Y");
+    syF.input.type = "number";
+    syF.input.value = String(Math.round(spec.spawnY));
+    syF.input.onchange = () => update({ spawnY: Number(syF.input.value) });
+    spawnRow.appendChild(sxF.wrap);
+    spawnRow.appendChild(syF.wrap);
+    container.appendChild(spawnRow);
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.style.marginTop = "12px";
+    delBtn.style.borderColor = "var(--danger)";
+    delBtn.style.color = "var(--danger)";
+    delBtn.onclick = () => scene.deleteSelected();
+    container.appendChild(delBtn);
+    return;
+  }
+
+  if (sel.kind === "breach") {
+    const spec: EditorBreachPoint = scene.getLevel().breachPoints[sel.index];
+    if (!spec) return;
+    const update = (patch: Partial<EditorBreachPoint>) => withPanelEdit(container, () => scene.updateSelectedBreach(patch));
+
+    const title = document.createElement("div");
+    title.className = "section-title";
+    title.textContent = "Breach point";
+    container.appendChild(title);
+
+    const idF = field("ID");
+    idF.input.type = "text";
+    idF.input.value = spec.id;
+    idF.input.onchange = () => update({ id: idF.input.value });
+    container.appendChild(idF.wrap);
+
+    const row = document.createElement("div");
+    row.className = "field-row";
+    const xF = field("X");
+    xF.input.type = "number";
+    xF.input.value = String(Math.round(spec.x));
+    xF.input.onchange = () => update({ x: Number(xF.input.value) });
+    const yF = field("Y");
+    yF.input.type = "number";
+    yF.input.value = String(Math.round(spec.y));
+    yF.input.onchange = () => update({ y: Number(yF.input.value) });
+    row.appendChild(xF.wrap);
+    row.appendChild(yF.wrap);
+    container.appendChild(row);
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.style.marginTop = "12px";
+    delBtn.style.borderColor = "var(--danger)";
+    delBtn.style.color = "var(--danger)";
+    delBtn.onclick = () => scene.deleteSelected();
+    container.appendChild(delBtn);
     return;
   }
 
@@ -418,6 +579,62 @@ function buildLevelTab(container: HTMLElement, scene: EditorScene): void {
     row.appendChild(btn);
     container.appendChild(row);
   });
+
+  const switchTitle = document.createElement("div");
+  switchTitle.className = "section-title";
+  switchTitle.textContent = "Switches (family-member light switches)";
+  container.appendChild(switchTitle);
+  level.switches.forEach((sw, i) => {
+    const row = document.createElement("div");
+    row.className = "field-row";
+    row.style.alignItems = "center";
+    row.style.marginBottom = "4px";
+    const btn = document.createElement("button");
+    btn.textContent = `${sw.familyMemberId || sw.id}: (${Math.round(sw.x)}, ${Math.round(sw.y)})`;
+    btn.style.flex = "1";
+    btn.onclick = () => scene.selectSwitch(i);
+    const rm = document.createElement("button");
+    rm.textContent = "✕";
+    rm.onclick = () => {
+      scene.selectSwitch(i);
+      scene.deleteSelected();
+    };
+    row.appendChild(btn);
+    row.appendChild(rm);
+    container.appendChild(row);
+  });
+  const addSwitchBtn = document.createElement("button");
+  addSwitchBtn.textContent = "+ Add switch";
+  addSwitchBtn.onclick = () => scene.setTool({ type: "switch" });
+  container.appendChild(addSwitchBtn);
+
+  const breachTitle = document.createElement("div");
+  breachTitle.className = "section-title";
+  breachTitle.textContent = "Breach points (where zombies force their way in)";
+  container.appendChild(breachTitle);
+  level.breachPoints.forEach((bp, i) => {
+    const row = document.createElement("div");
+    row.className = "field-row";
+    row.style.alignItems = "center";
+    row.style.marginBottom = "4px";
+    const btn = document.createElement("button");
+    btn.textContent = `${bp.id}: (${Math.round(bp.x)}, ${Math.round(bp.y)})`;
+    btn.style.flex = "1";
+    btn.onclick = () => scene.selectBreach(i);
+    const rm = document.createElement("button");
+    rm.textContent = "✕";
+    rm.onclick = () => {
+      scene.selectBreach(i);
+      scene.deleteSelected();
+    };
+    row.appendChild(btn);
+    row.appendChild(rm);
+    container.appendChild(row);
+  });
+  const addBreachBtn = document.createElement("button");
+  addBreachBtn.textContent = "+ Add breach point";
+  addBreachBtn.onclick = () => scene.setTool({ type: "breach" });
+  container.appendChild(addBreachBtn);
 }
 
 export function buildInspector(container: HTMLElement, scene: EditorScene): void {

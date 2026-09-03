@@ -2,7 +2,13 @@ import { buildApartmentLevel } from "@/data/levels/apartmentLevel";
 import { buildOfficeLevel } from "@/data/levels/officeLevel";
 import { buildCombatTutorialLevel, type CombatTutorialVariant } from "@/data/levels/combatTutorialLevel";
 import { buildLeaveBuildingLevel, type LeaveBuildingVariant } from "@/data/levels/leaveBuildingLevel";
-import type { EditorLevelData } from "@/editor/types";
+import {
+  buildFamilyHouseExterior,
+  buildFamilyHouseGroundFloor,
+  buildFamilyHouseUpperFloor,
+  type FloorLevel,
+} from "@/data/levels/familyHouseLevel";
+import type { EditorLevelData, EditorSwitchSpec } from "@/editor/types";
 
 /**
  * Adapters from the real game's level-builder functions into the editor's
@@ -34,6 +40,8 @@ export const BUILTIN_LEVELS: BuiltinLevelOption[] = [
         playerStart: lvl.playerStartBedroom,
         endPoint: null,
         zombieSpawn: null,
+        switches: [],
+        breachPoints: [],
         ambientLevel: 1,
         objectives: { title: "", steps: [] },
       };
@@ -57,6 +65,8 @@ export const BUILTIN_LEVELS: BuiltinLevelOption[] = [
         playerStart: lvl.playerStart,
         endPoint: null,
         zombieSpawn: null,
+        switches: [],
+        breachPoints: [],
         ambientLevel: 1,
         objectives: { title: "", steps: [] },
       };
@@ -77,6 +87,8 @@ export const BUILTIN_LEVELS: BuiltinLevelOption[] = [
         playerStart: lvl.playerStart,
         endPoint: lvl.endPoint,
         zombieSpawn: null,
+        switches: [],
+        breachPoints: [],
         ambientLevel: lvl.ambientLevel,
         objectives: { title: "", steps: [] },
       };
@@ -100,6 +112,61 @@ export const BUILTIN_LEVELS: BuiltinLevelOption[] = [
         playerStart: lvl.playerStart,
         endPoint: null,
         zombieSpawn: lvl.zombieSpawn,
+        switches: [],
+        breachPoints: [],
+        ambientLevel: lvl.ambientLevel,
+        objectives: { title: "", steps: [] },
+      };
+    },
+  })),
+  {
+    id: "family_house_exterior",
+    label: "Family House — Exterior",
+    load: () => {
+      const lvl = buildFamilyHouseExterior();
+      return {
+        formatVersion: 1,
+        meta: { name: "family_house_exterior", notes: "Imported from the game's built-in Family House exterior (HomeArrivalScene, reference only)." },
+        width: lvl.width,
+        height: lvl.height,
+        tiles: lvl.tiles,
+        props: lvl.props,
+        playerStart: lvl.playerStart,
+        endPoint: null,
+        zombieSpawn: lvl.zombieSpawn,
+        switches: [],
+        breachPoints: [],
+        ambientLevel: 1,
+        objectives: { title: "", steps: [] },
+      };
+    },
+  },
+  ...(
+    [
+      ["family_house_ground", "Family House — Ground Floor", buildFamilyHouseGroundFloor],
+      ["family_house_upper", "Family House — Upper Floor", buildFamilyHouseUpperFloor],
+    ] as const
+  ).map(([id, label, build]) => ({
+    id,
+    label,
+    load: (): EditorLevelData => {
+      const lvl: FloorLevel = build();
+      return {
+        formatVersion: 1,
+        meta: {
+          name: id,
+          notes:
+            "Imported from the game's built-in House Defense floor (reference only). Player start is this floor's entryAt (where you land arriving here); end point is stairsAt (the stairs prop's own position, not where you land using them — see useStairs() in HouseDefenseScene.ts).",
+        },
+        width: lvl.width,
+        height: lvl.height,
+        tiles: lvl.tiles,
+        props: lvl.props,
+        playerStart: lvl.entryAt,
+        endPoint: lvl.stairsAt,
+        zombieSpawn: null,
+        switches: lvl.switches as EditorSwitchSpec[],
+        breachPoints: lvl.breachPoints,
         ambientLevel: lvl.ambientLevel,
         objectives: { title: "", steps: [] },
       };

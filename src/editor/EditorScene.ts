@@ -9,7 +9,7 @@ import { generatePlayerTextures, createPlayerAnimations } from "@/gfx/playerSpri
 import { Player, type MoveInput } from "@/core/entities/Player";
 import { TILESET_KEY, WALL_TILE_SET } from "@/editor/paletteData";
 import { EditorHistory } from "@/editor/history";
-import { newLevel, resizeTileGrid, type EditorLevelData, type PropSpec } from "@/editor/types";
+import { newLevel, resizeTileGrid, type EditorLevelData, type PropSpec, type EditorSwitchSpec, type EditorBreachPoint } from "@/editor/types";
 
 export type MarkerKind = "playerStart" | "endPoint" | "zombieSpawn";
 
@@ -17,7 +17,12 @@ export type EditorTool =
   | { type: "select" }
   | { type: "tile"; tileIndex: number }
   | { type: "prop"; texKey: string; w: number; h: number }
-  | { type: "marker"; which: MarkerKind };
+  | { type: "marker"; which: MarkerKind }
+  | { type: "switch" }
+  | { type: "breach" };
+
+const SWITCH_COLOR = 0xff9933;
+const BREACH_COLOR = 0xff4466;
 
 const MARKER_STYLE: Record<MarkerKind, { color: number; label: string }> = {
   playerStart: { color: 0x4ade80, label: "START" },
@@ -50,6 +55,8 @@ export class EditorScene extends Phaser.Scene {
   snapToGrid = true;
   selectedPropIndex: number | null = null;
   selectedMarker: MarkerKind | null = null;
+  selectedSwitchIndex: number | null = null;
+  selectedBreachIndex: number | null = null;
   playTesting = false;
 
   private tileComposite!: Phaser.Textures.CanvasTexture;
@@ -64,6 +71,8 @@ export class EditorScene extends Phaser.Scene {
     endPoint: null,
     zombieSpawn: null,
   };
+  private switchNodes: Phaser.GameObjects.Container[] = [];
+  private breachNodes: Phaser.GameObjects.Container[] = [];
 
   private isPointerDown = false;
   private isPainting = false;
@@ -161,9 +170,13 @@ export class EditorScene extends Phaser.Scene {
     this.level = data;
     this.selectedPropIndex = null;
     this.selectedMarker = null;
+    this.selectedSwitchIndex = null;
+    this.selectedBreachIndex = null;
     this.rebuildTileComposite();
     this.rebuildProps();
     this.rebuildMarkers();
+    this.rebuildSwitches();
+    this.rebuildBreachPoints();
     this.rebuildGrid();
     this.fitCameraToLevel();
     if (resetHistory) this.history.reset(this.level);
@@ -370,6 +383,18 @@ export class EditorScene extends Phaser.Scene {
       this.events.emit("selection-changed", null);
     } else if (this.selectedMarker) {
       this.clearMarker(this.selectedMarker);
+    } else if (this.selectedSwitchIndex !== null) {
+      this.level.switches.splice(this.selectedSwitchIndex, 1);
+      this.selectedSwitchIndex = null;
+      this.rebuildSwitches();
+      this.commit();
+      this.events.emit("selection-changed", null);
+    } else if (this.selectedBreachIndex !== null) {
+      this.level.breachPoints.splice(this.selectedBreachIndex, 1);
+      this.selectedBreachIndex = null;
+      this.rebuildBreachPoints();
+      this.commit();
+      this.events.emit("selection-changed", null);
     }
   }
 
@@ -387,6 +412,24 @@ export class EditorScene extends Phaser.Scene {
     this.level = { ...this.level, props };
     this.refreshPropSprite(this.selectedPropIndex);
     this.updateSelectionBox();
+    this.commit(false);
+  }
+
+  updateSelectedSwitch(patch: Partial<EditorSwitchSpec>): void {
+    if (this.selectedSwitchIndex === null) return;
+    const switches = this.level.switches.slice();
+    switches[this.selectedSwitchIndex] = { ...switches[this.selectedSwitchIndex], ...patch };
+    this.level = { ...this.level, switches };
+    this.refreshSwitchNode(this.selectedSwitchIndex);
+    this.commit(false);
+  }
+
+  updateSelectedBreach(patch: Partial<EditorBreachPoint>): void {
+    if (this.selectedBreachIndex === null) return;
+    const breachPoints = this.level.breachPoints.slice();
+    breachPoints[this.selectedBreachIndex] = { ...breachPoints[this.selectedBreachIndex], ...patch };
+    this.level = { ...this.level, breachPoints };
+    this.refreshBreachNode(this.selectedBreachIndex);
     this.commit(false);
   }
 
@@ -551,6 +594,56 @@ export class EditorScene extends Phaser.Scene {
     });
   }
 
+  /** A dot + text label, same visual language as rebuildMarkers() but for the array-valued switch/breach-point concepts (see EditorSwitchSpec/EditorBreachPoint) rather than the fixed single-point markers. */
+  private buildPointNode(x: number, y: number, color: number, label: string, onDown: (p: Phaser.Input.Pointer) => void): Phaser.GameObjects.Container {
+    const gfx = this.add.graphics();
+    gfx.fillStyle(color, 0.9);
+    gfx.fillCircle(0, 0, 6);
+    gfx.lineStyle(2, 0x000000, 0.6);
+    gfx.strokeCircle(0, 0, 6);
+    const text = this.add.text(0, -18, label, {
+      fontFamily: "monospace",
+      fontSize: "10px",
+      color: "#ffffff",
+      backgroundColor: "#000000aa",
+      padding: { x: 3, y: 1 },
+    }).setOrigin(0.5, 0.5);
+    const container = this.add.container(x, y, [gfx, text]);
+    container.setDepth(2000);
+    container.setSize(16, 16);
+    container.setInteractive({ hitArea: new Phaser.Geom.Circle(0, 0, 10), hitAreaCallback: Phaser.Geom.Circle.Contains, cursor: "pointer" });
+    container.on("pointerdown", onDown);
+    return container;
+  }
+
+  private rebuildSwitches(): void {
+    this.switchNodes.forEach((n) => n.destroy());
+    this.switchNodes = this.level.switches.map((sw, i) =>
+      this.buildPointNode(sw.x, sw.y, SWITCH_COLOR, `SWITCH: ${sw.familyMemberId || sw.id}`, (p) => this.onSwitchPointerDown(i, p)),
+    );
+  }
+
+  private rebuildBreachPoints(): void {
+    this.breachNodes.forEach((n) => n.destroy());
+    this.breachNodes = this.level.breachPoints.map((bp, i) =>
+      this.buildPointNode(bp.x, bp.y, BREACH_COLOR, "BREACH", (p) => this.onBreachPointerDown(i, p)),
+    );
+  }
+
+  /** Only the label can go stale between edits (familyMemberId feeds it) — cheap enough, and there are never more than a handful of switches, to just rebuild the one node rather than diff what changed. */
+  private refreshSwitchNode(index: number): void {
+    const sw = this.level.switches[index];
+    if (!sw) return;
+    this.switchNodes[index]?.destroy();
+    this.switchNodes[index] = this.buildPointNode(sw.x, sw.y, SWITCH_COLOR, `SWITCH: ${sw.familyMemberId || sw.id}`, (p) => this.onSwitchPointerDown(index, p));
+  }
+
+  private refreshBreachNode(index: number): void {
+    const bp = this.level.breachPoints[index];
+    const node = this.breachNodes[index];
+    if (bp && node) node.setPosition(bp.x, bp.y);
+  }
+
   private updateSelectionBox(): void {
     this.selectionGfx.clear();
     if (this.selectedPropIndex === null) return;
@@ -600,9 +693,33 @@ export class EditorScene extends Phaser.Scene {
     this.strokeSnapshot = JSON.stringify(this.level);
   }
 
+  private onSwitchPointerDown(index: number, pointer: Phaser.Input.Pointer): void {
+    if (this.playTesting || this.tool.type !== "select" || this.spaceKey.isDown || pointer.button === 1) return;
+    pointer.event.stopPropagation();
+    this.selectSwitch(index);
+    this.isDraggingProp = true;
+    const sw = this.level.switches[index];
+    const wp = this.worldPointer(pointer);
+    this.dragOffset = { x: wp.x - sw.x, y: wp.y - sw.y };
+    this.strokeSnapshot = JSON.stringify(this.level);
+  }
+
+  private onBreachPointerDown(index: number, pointer: Phaser.Input.Pointer): void {
+    if (this.playTesting || this.tool.type !== "select" || this.spaceKey.isDown || pointer.button === 1) return;
+    pointer.event.stopPropagation();
+    this.selectBreach(index);
+    this.isDraggingProp = true;
+    const bp = this.level.breachPoints[index];
+    const wp = this.worldPointer(pointer);
+    this.dragOffset = { x: wp.x - bp.x, y: wp.y - bp.y };
+    this.strokeSnapshot = JSON.stringify(this.level);
+  }
+
   selectProp(index: number): void {
     this.selectedPropIndex = index;
     this.selectedMarker = null;
+    this.selectedSwitchIndex = null;
+    this.selectedBreachIndex = null;
     this.updateSelectionBox();
     this.events.emit("selection-changed", { kind: "prop", index });
   }
@@ -610,13 +727,35 @@ export class EditorScene extends Phaser.Scene {
   selectMarker(kind: MarkerKind): void {
     this.selectedMarker = kind;
     this.selectedPropIndex = null;
+    this.selectedSwitchIndex = null;
+    this.selectedBreachIndex = null;
     this.selectionGfx.clear();
     this.events.emit("selection-changed", { kind: "marker", which: kind });
+  }
+
+  selectSwitch(index: number): void {
+    this.selectedSwitchIndex = index;
+    this.selectedPropIndex = null;
+    this.selectedMarker = null;
+    this.selectedBreachIndex = null;
+    this.selectionGfx.clear();
+    this.events.emit("selection-changed", { kind: "switch", index });
+  }
+
+  selectBreach(index: number): void {
+    this.selectedBreachIndex = index;
+    this.selectedPropIndex = null;
+    this.selectedMarker = null;
+    this.selectedSwitchIndex = null;
+    this.selectionGfx.clear();
+    this.events.emit("selection-changed", { kind: "breach", index });
   }
 
   private deselect(): void {
     this.selectedPropIndex = null;
     this.selectedMarker = null;
+    this.selectedSwitchIndex = null;
+    this.selectedBreachIndex = null;
     this.selectionGfx.clear();
     this.events.emit("selection-changed", null);
   }
@@ -665,7 +804,45 @@ export class EditorScene extends Phaser.Scene {
       return;
     }
 
-    // select tool clicking empty space (prop/marker pointerdown already stopped propagation)
+    if (this.tool.type === "switch") {
+      // lightX/Y and spawnX/Y default to the same spot as the switch
+      // itself — a reasonable starting point (a single-room level would
+      // often want the light near the switch anyway) that's then editable
+      // as its own numeric field in the inspector, same as everything else
+      // about a switch that isn't a draggable on-canvas point.
+      const snapped = this.snapPoint(wp.x, wp.y);
+      this.strokeSnapshot = JSON.stringify(this.level);
+      const id = `switch_${this.level.switches.length}`;
+      const spec: EditorSwitchSpec = {
+        id,
+        familyMemberId: "",
+        x: snapped.x,
+        y: snapped.y,
+        lightId: `${id}_light`,
+        lightX: snapped.x,
+        lightY: snapped.y,
+        spawnX: snapped.x,
+        spawnY: snapped.y,
+      };
+      this.level.switches.push(spec);
+      this.rebuildSwitches();
+      this.selectSwitch(this.level.switches.length - 1);
+      this.commit();
+      return;
+    }
+
+    if (this.tool.type === "breach") {
+      const snapped = this.snapPoint(wp.x, wp.y);
+      this.strokeSnapshot = JSON.stringify(this.level);
+      const spec: EditorBreachPoint = { id: `breach_${this.level.breachPoints.length}`, x: snapped.x, y: snapped.y };
+      this.level.breachPoints.push(spec);
+      this.rebuildBreachPoints();
+      this.selectBreach(this.level.breachPoints.length - 1);
+      this.commit();
+      return;
+    }
+
+    // select tool clicking empty space (prop/marker/switch/breach pointerdown already stopped propagation)
     this.deselect();
   }
 
@@ -700,6 +877,16 @@ export class EditorScene extends Phaser.Scene {
       } else if (this.selectedMarker) {
         this.level = { ...this.level, [this.selectedMarker]: target };
         this.rebuildMarkers();
+      } else if (this.selectedSwitchIndex !== null) {
+        const sw = this.level.switches[this.selectedSwitchIndex];
+        sw.x = target.x;
+        sw.y = target.y;
+        this.refreshSwitchNode(this.selectedSwitchIndex);
+      } else if (this.selectedBreachIndex !== null) {
+        const bp = this.level.breachPoints[this.selectedBreachIndex];
+        bp.x = target.x;
+        bp.y = target.y;
+        this.refreshBreachNode(this.selectedBreachIndex);
       }
     }
   }
@@ -731,9 +918,13 @@ export class EditorScene extends Phaser.Scene {
     this.level = state;
     this.selectedPropIndex = null;
     this.selectedMarker = null;
+    this.selectedSwitchIndex = null;
+    this.selectedBreachIndex = null;
     this.rebuildTileComposite();
     this.rebuildProps();
     this.rebuildMarkers();
+    this.rebuildSwitches();
+    this.rebuildBreachPoints();
     this.rebuildGrid();
     this.selectionGfx.clear();
     this.events.emit("level-changed", this.level);

@@ -1,4 +1,4 @@
-import type { EditorLevelData } from "@/editor/types";
+import type { EditorLevelData, EditorSwitchSpec, EditorBreachPoint } from "@/editor/types";
 
 /** Triggers a normal browser file download — this is a real served page, not a sandboxed artifact preview, so a Blob URL + <a download> works fine. */
 export function downloadLevel(data: EditorLevelData): void {
@@ -24,6 +24,32 @@ function isFinitePoint(v: unknown): v is { x: number; y: number } {
   );
 }
 
+function parseSwitches(v: unknown): EditorSwitchSpec[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isFinitePoint).map((s, i) => {
+    const raw = s as Partial<EditorSwitchSpec>;
+    return {
+      id: typeof raw.id === "string" ? raw.id : `switch_${i}`,
+      familyMemberId: typeof raw.familyMemberId === "string" ? raw.familyMemberId : "",
+      x: raw.x!,
+      y: raw.y!,
+      lightId: typeof raw.lightId === "string" ? raw.lightId : `switch_${i}_light`,
+      lightX: typeof raw.lightX === "number" ? raw.lightX : raw.x!,
+      lightY: typeof raw.lightY === "number" ? raw.lightY : raw.y!,
+      spawnX: typeof raw.spawnX === "number" ? raw.spawnX : raw.x!,
+      spawnY: typeof raw.spawnY === "number" ? raw.spawnY : raw.y!,
+    };
+  });
+}
+
+function parseBreachPoints(v: unknown): EditorBreachPoint[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isFinitePoint).map((p, i) => {
+    const raw = p as Partial<EditorBreachPoint>;
+    return { id: typeof raw.id === "string" ? raw.id : `breach_${i}`, x: raw.x!, y: raw.y! };
+  });
+}
+
 /** Best-effort validation — accepts anything roughly level-shaped rather than requiring an exact match, since a hand-edited or Claude-authored file is a first-class input path here. */
 export function parseLevelJson(raw: string): EditorLevelData {
   const obj = JSON.parse(raw) as Partial<EditorLevelData> & Record<string, unknown>;
@@ -47,6 +73,8 @@ export function parseLevelJson(raw: string): EditorLevelData {
     playerStart: isFinitePoint(obj.playerStart) ? obj.playerStart : null,
     endPoint: isFinitePoint(obj.endPoint) ? obj.endPoint : null,
     zombieSpawn: isFinitePoint(obj.zombieSpawn) ? obj.zombieSpawn : null,
+    switches: parseSwitches(obj.switches),
+    breachPoints: parseBreachPoints(obj.breachPoints),
     ambientLevel: typeof obj.ambientLevel === "number" ? obj.ambientLevel : 1,
     objectives: {
       title: typeof obj.objectives?.title === "string" ? obj.objectives.title : "",
