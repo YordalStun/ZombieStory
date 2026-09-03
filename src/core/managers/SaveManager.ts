@@ -1,6 +1,6 @@
 import { SAVE_KEYS, type Checkpoint } from "@/config/constants";
 
-export type SoundSource = "generated" | "pack";
+export type SoundSource = "generated" | "pack" | "pack2";
 
 export interface Settings {
   masterVolume: number;

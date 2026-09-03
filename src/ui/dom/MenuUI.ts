@@ -152,7 +152,8 @@ export function showSettingsMenu(onBack: () => void): void {
       "Sound",
       [
         { value: "generated" as const, label: "Generated" },
-        { value: "pack" as const, label: "Sound Pack" },
+        { value: "pack" as const, label: "Pack A" },
+        { value: "pack2" as const, label: "Pack B" },
       ],
       settings.soundSource,
       (v) => {
@@ -163,7 +164,7 @@ export function showSettingsMenu(onBack: () => void): void {
   );
   const soundHint = document.createElement("div");
   soundHint.className = "settings-hint";
-  soundHint.textContent = "Generated: synthesized in-browser. Sound Pack: real recordings (CC0/CC-BY).";
+  soundHint.textContent = "Generated: synthesized in-browser. Pack A/B: real recordings (CC0), two different flavours — either can fall back to Generated for a few sounds neither pack covers.";
   panel.appendChild(soundHint);
 
   const fsRow = document.createElement("label");

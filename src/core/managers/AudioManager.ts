@@ -30,7 +30,7 @@ export const MusicKey = {
 } as const;
 
 /**
- * Real-audio alternative for the "Sound pack" setting (see Settings menu).
+ * Real-audio alternative for the "Pack A" setting (see Settings menu).
  * Only keys listed here have a pack alternative; anything missing quietly
  * falls back to the generated version even when "pack" is selected — see
  * public/audio/CREDITS.md for what's covered and where each file came from.
@@ -56,8 +56,32 @@ const PACK_URLS: Partial<Record<string, string>> = {
   [MusicKey.MENU]: "audio/music/music_menu.ogg",
 };
 
-function packKeyFor(logicalKey: string): string {
-  return `${logicalKey}__pack`;
+/**
+ * Real-audio alternative for the "Pack B" setting — a second, deliberately
+ * different-sounding option (crunchier/chiptune rather than Pack A's
+ * cleaner UI-kit-and-field-recording mix) so the two aren't just the same
+ * thing twice. Covers a smaller key set than PACK_URLS — the ambience/loop
+ * textures (rain, wind, TV hum, office chatter) aren't a good fit for this
+ * pack's short one-shots, so those keys fall back to generated even when
+ * Pack B is selected, same as any key either pack doesn't cover.
+ */
+const PACK2_URLS: Partial<Record<string, string>> = {
+  [SfxKey.UI_CLICK]: "audio/pack2/sfx/sfx_ui_click.wav",
+  [SfxKey.UI_HOVER]: "audio/pack2/sfx/sfx_ui_hover.wav",
+  [SfxKey.FOOTSTEP]: "audio/pack2/sfx/sfx_footstep.wav",
+  [SfxKey.INTERACT]: "audio/pack2/sfx/sfx_interact.wav",
+  [SfxKey.DOOR]: "audio/pack2/sfx/sfx_door.wav",
+  [SfxKey.TV_OFF]: "audio/pack2/sfx/sfx_tv_off.wav",
+  [SfxKey.BANG]: "audio/pack2/sfx/sfx_bang.wav",
+  [SfxKey.GROAN]: "audio/pack2/sfx/sfx_groan.wav",
+  [SfxKey.ELEVATOR_DING]: "audio/pack2/sfx/sfx_elevator_ding.wav",
+};
+
+const PACK_SOURCES = { pack: PACK_URLS, pack2: PACK2_URLS } as const;
+type PackSource = keyof typeof PACK_SOURCES;
+
+function packKeyFor(logicalKey: string, source: PackSource): string {
+  return `${logicalKey}__${source}`;
 }
 
 interface LoopingBed {
@@ -123,14 +147,16 @@ class AudioManagerClass {
     this.ready = true;
   }
 
-  /** Queues every real-audio file listed in PACK_URLS and waits for the loader to finish (successes and failures alike — a missing/broken file just never lands in the cache, so resolveKey() falls back silently). */
+  /** Queues every real-audio file listed in both PACK_URLS and PACK2_URLS and waits for the loader to finish (successes and failures alike — a missing/broken file just never lands in the cache, so resolveKey() falls back silently). */
   private loadPackAssets(scene: Phaser.Scene): Promise<void> {
     return new Promise((resolve) => {
       let queued = 0;
-      for (const [key, url] of Object.entries(PACK_URLS)) {
-        if (!url) continue;
-        scene.load.audio(packKeyFor(key), url);
-        queued++;
+      for (const [source, urls] of Object.entries(PACK_SOURCES) as Array<[PackSource, Partial<Record<string, string>>]>) {
+        for (const [key, url] of Object.entries(urls)) {
+          if (!url) continue;
+          scene.load.audio(packKeyFor(key, source), url);
+          queued++;
+        }
       }
       if (queued === 0) {
         resolve();
@@ -145,10 +171,11 @@ class AudioManagerClass {
     return SaveManager.loadSettings();
   }
 
-  /** Real pack file if the setting asks for it and that key actually has one loaded; the generated key otherwise. */
+  /** Real pack file if the setting asks for one and that key actually has it loaded for the chosen pack; the generated key otherwise. */
   private resolveKey(logicalKey: string): string {
-    if (this.settings.soundSource === "pack" && this.scene?.cache.audio.has(packKeyFor(logicalKey))) {
-      return packKeyFor(logicalKey);
+    const source = this.settings.soundSource;
+    if ((source === "pack" || source === "pack2") && this.scene?.cache.audio.has(packKeyFor(logicalKey, source))) {
+      return packKeyFor(logicalKey, source);
     }
     return logicalKey;
   }
