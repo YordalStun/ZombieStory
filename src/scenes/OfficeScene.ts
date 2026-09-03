@@ -88,6 +88,9 @@ export class OfficeScene extends Phaser.Scene {
   private wallLayer!: Phaser.Tilemaps.TilemapLayer;
   private propsById = new Map<string, PropEntry>();
   private coworkersById = new Map<string, CoworkerEntry>();
+  /** Every coworker sprite, interactable or background crowd/desk filler alike — coworkersById only ever holds the named, interactable subset, but thinOutCoworkers() needs to reach everyone. */
+  private allCoworkers: CoworkerEntry[] = [];
+  private monitorGlowsById = new Map<string, Phaser.GameObjects.Image>();
   private focusedInteractable: string | null = null;
   private level!: OfficeLevel;
   private broadcastPlayed = false;
@@ -109,6 +112,8 @@ export class OfficeScene extends Phaser.Scene {
     this.deskArrow = undefined;
     this.propsById.clear();
     this.coworkersById.clear();
+    this.allCoworkers = [];
+    this.monitorGlowsById.clear();
     this.focusedInteractable = null;
     this.broadcastPlayed = false;
     this.busy = true;
@@ -211,6 +216,10 @@ export class OfficeScene extends Phaser.Scene {
     if (spec.flipY) sprite.setFlipY(true);
     this.lighting.makeLit(sprite);
 
+    if (spec.light) {
+      this.lighting.addLight(spec.id, spec.x, spec.y, spec.light.radius, spec.light.color, spec.light.intensity, spec.light.flicker);
+    }
+
     this.propsById.set(spec.id, { spec, sprite });
   }
 
@@ -223,6 +232,7 @@ export class OfficeScene extends Phaser.Scene {
       if (c.interactable) {
         this.coworkersById.set(c.id, { spec: c, sprite: img });
       }
+      this.allCoworkers.push({ spec: c, sprite: img });
 
       // makes the floor feel occupied rather than staged — seated figures
       // get a tiny typing bob, standing ones a weight-shift sway, each on
@@ -260,6 +270,7 @@ export class OfficeScene extends Phaser.Scene {
       glow.setDepth(DEPTH.ACTOR_SORT_BASE + c.monitorPos.y + 0.5);
       glow.setAlpha(0.7);
       this.lighting.makeLit(glow);
+      this.monitorGlowsById.set(c.id, glow);
       this.tweens.add({
         targets: glow,
         alpha: { from: 0.45, to: 0.85 },
@@ -269,6 +280,39 @@ export class OfficeScene extends Phaser.Scene {
         repeat: -1,
         ease: "Sine.easeInOut",
       });
+    }
+  }
+
+  /**
+   * By the time Danny's actually heading home, the floor shouldn't still
+   * look as full as it did mid-afternoon — a chunk of both named and
+   * background coworkers quietly "go home" while dialogue has the
+   * player's attention, Dana excepted since she's still got the
+   * bat-toss beat ahead of her. Deliberately not awaited by the caller:
+   * the fades play out staggered over ~2s in the background while the
+   * head-home dialogue runs, so nobody's watching them vanish one by one.
+   */
+  private thinOutCoworkers(): void {
+    const KEEP = new Set(["dana"]);
+    const leaving = this.allCoworkers.filter((c) => !KEEP.has(c.spec.id) && Math.random() < 0.45);
+
+    for (const entry of leaving) {
+      this.tweens.killTweensOf(entry.sprite);
+      this.tweens.add({
+        targets: entry.sprite,
+        alpha: 0,
+        duration: 500 + Math.random() * 400,
+        delay: Math.random() * 2000,
+        ease: "Sine.easeIn",
+      });
+
+      const glow = this.monitorGlowsById.get(entry.spec.id);
+      if (glow) {
+        this.tweens.killTweensOf(glow);
+        this.tweens.add({ targets: glow, alpha: 0, duration: 400, delay: Math.random() * 2000 });
+      }
+
+      this.coworkersById.delete(entry.spec.id);
     }
   }
 
@@ -557,6 +601,7 @@ export class OfficeScene extends Phaser.Scene {
     ObjectiveManager.clear();
     this.player.setControlsEnabled(false);
     EventBus.emit(Events.PROMPT_HIDE);
+    this.thinOutCoworkers();
 
     await DialoguePlayer.play(HEAD_HOME_LINES);
 
@@ -724,8 +769,11 @@ export class OfficeScene extends Phaser.Scene {
 
     // ambient COLOR (not just the level float, which only drives the HUD
     // reading) is what actually controls rendered brightness — see
-    // CombatTutorialScene for the fuller explanation
-    this.lighting.setAmbient(0x2c3040, 0.12);
+    // CombatTutorialScene for the fuller explanation. Deliberately not as
+    // dark as a real night exterior: the office's own ceiling lights (see
+    // officeLevel.ts) are what's supposed to be doing the work of keeping
+    // it lit indoors, this is just "sun's down outside" dimming the base.
+    this.lighting.setAmbient(0x767c8c, 0.42);
     images.forEach((img) => img.destroy());
   }
 

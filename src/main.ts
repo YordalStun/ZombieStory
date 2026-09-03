@@ -4,6 +4,7 @@ import "@/ui/dom/ui.css";
 import "@/ui/dom/computer.css";
 import "@/ui/dom/weapon.css";
 import "@/ui/dom/debugmenu.css";
+import "@/ui/dom/brightness.css";
 import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { BootScene } from "@/scenes/BootScene";
 import { PreloadScene } from "@/scenes/PreloadScene";
@@ -25,6 +26,8 @@ import { initComputerUI } from "@/ui/dom/ComputerUI";
 import { initWeaponUI } from "@/ui/dom/WeaponUI";
 import { initPathChoiceUI } from "@/ui/dom/PathChoiceUI";
 import { initDebugMenuUI } from "@/ui/dom/DebugMenuUI";
+import { applyBrightness } from "@/ui/dom/BrightnessUI";
+import { SaveManager } from "@/core/managers/SaveManager";
 
 // Lighting (Light2D) is WebGL-only in Phaser 3, hence an explicit WEBGL
 // context rather than AUTO — see LightingManager.
@@ -63,6 +66,7 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
+applyBrightness(SaveManager.loadSettings().brightness);
 initUIRoot();
 initDialogueBoxUI();
 initHUDUI();

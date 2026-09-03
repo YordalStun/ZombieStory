@@ -26,6 +26,7 @@ export const OfficeTex = {
   ELEVATOR_WALL: "office_elevator_wall",
   ELEVATOR_DOOR: "office_elevator_door",
   EXIT_DOORS: "office_exit_doors",
+  CEILING_LIGHT: "office_ceiling_light",
 } as const;
 
 export const OfficeTexSize: Record<string, { w: number; h: number }> = {
@@ -50,6 +51,7 @@ export const OfficeTexSize: Record<string, { w: number; h: number }> = {
   [OfficeTex.PAPER_STACK]: { w: 10, h: 8 },
   [OfficeTex.DESK_ARROW]: { w: 14, h: 14 },
   [OfficeTex.EXIT_DOORS]: { w: 20, h: 18 },
+  [OfficeTex.CEILING_LIGHT]: { w: 24, h: 14 },
 };
 
 function draw(
@@ -379,5 +381,15 @@ export function generateOfficeTextures(scene: Phaser.Scene): void {
     rect(ctx, w - 4, h / 2 - 16, 3, 32, 0x2a2c30); // door handle, on the inner (seam) edge
     speckle(ctx, 0, 0, w, h, 0x888c92, 140, 31);
     outline(ctx, 0, 0, w, h, 0x50535a);
+  });
+
+  // a recessed fluorescent ceiling panel, seen from directly below/above —
+  // just a bright rectangle with a hot center, paired with a registered
+  // Light2D light wherever it's placed (see officeLevel.ts's ceiling-light
+  // props) so the fixture itself is visible, not just an unexplained glow
+  draw(scene, OfficeTex.CEILING_LIGHT, (ctx, w, h) => {
+    rect(ctx, 0, 0, w, h, 0xaeb4c2);
+    rect(ctx, 1, 1, w - 2, h - 2, 0xf8f6ec);
+    rect(ctx, 3, 3, w - 6, h - 6, 0xffffff);
   });
 }

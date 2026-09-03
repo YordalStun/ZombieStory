@@ -2,6 +2,7 @@ import { EventBus, Events } from "@/core/EventBus";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { setHudVisible } from "@/ui/dom/HUDUI";
+import { applyBrightness } from "@/ui/dom/BrightnessUI";
 
 function makeButton(label: string, onClick: () => void, disabled = false): HTMLButtonElement {
   const btn = document.createElement("button");
@@ -57,7 +58,12 @@ function makeChoiceRow<T extends string>(
   return row;
 }
 
-function makeSlider(label: string, value: number, onChange: (v: number) => void): HTMLDivElement {
+function makeSlider(
+  label: string,
+  value: number,
+  onChange: (v: number) => void,
+  range: { min: number; max: number } = { min: 0, max: 100 },
+): HTMLDivElement {
   const row = document.createElement("div");
   row.className = "settings-slider-row";
 
@@ -66,8 +72,8 @@ function makeSlider(label: string, value: number, onChange: (v: number) => void)
 
   const input = document.createElement("input");
   input.type = "range";
-  input.min = "0";
-  input.max = "100";
+  input.min = String(range.min);
+  input.max = String(range.max);
   input.value = String(Math.round(value * 100));
 
   const valueEl = document.createElement("span");
@@ -148,6 +154,17 @@ export function showSettingsMenu(onBack: () => void): void {
   panel.appendChild(makeSlider("Master Volume", settings.masterVolume, (v) => onVolumeChange({ masterVolume: v })));
   panel.appendChild(makeSlider("Music Volume", settings.musicVolume, (v) => onVolumeChange({ musicVolume: v })));
   panel.appendChild(makeSlider("SFX Volume", settings.sfxVolume, (v) => onVolumeChange({ sfxVolume: v })));
+  panel.appendChild(
+    makeSlider(
+      "Brightness",
+      settings.brightness,
+      (v) => {
+        SaveManager.updateSettings({ brightness: v });
+        applyBrightness(v);
+      },
+      { min: 50, max: 200 },
+    ),
+  );
 
   panel.appendChild(
     makeChoiceRow(

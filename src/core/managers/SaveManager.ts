@@ -8,6 +8,8 @@ export interface Settings {
   sfxVolume: number;
   fullscreen: boolean;
   soundSource: SoundSource;
+  /** CSS brightness() multiplier applied to the game canvas — 1 is neutral. Set by the boot calibration screen, adjustable later from Settings. */
+  brightness: number;
 }
 
 export interface Progress {
@@ -22,6 +24,7 @@ const DEFAULT_SETTINGS: Settings = {
   sfxVolume: 0.9,
   fullscreen: false,
   soundSource: "generated",
+  brightness: 1,
 };
 
 const SAVE_VERSION = 1;

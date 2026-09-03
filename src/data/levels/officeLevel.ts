@@ -564,6 +564,36 @@ export function buildOfficeLevel(): OfficeLevel {
       });
     });
 
+  // ceiling lights: mostly invisible against the full-bright daytime
+  // ambient (see OfficeScene's LightingManager setup), but once evening
+  // falls and the ambient dims (citySunsetCutscene), these become the
+  // office's actual visible light sources instead of one flat wash —
+  // one per pod row (centered on the shared aisle, printer/cooler already
+  // anchor that line), one over each meeting table, and one each for the
+  // lobby and break room
+  const ceilingSpots: Array<[number, number, string]> = [
+    [20, 4, "ceiling_lobby"],
+    [7.5, 13, "ceiling_meeting_a"],
+    [6, 24.5, "ceiling_meeting_b"],
+    [27, 11, "ceiling_row1"],
+    [27, 19, "ceiling_row2"],
+    [27, 27, "ceiling_row3"],
+    [27, 35, "ceiling_row4"],
+    [27, 42, "ceiling_row5"],
+    [20, LEVEL_HEIGHT - 6, "ceiling_break"],
+  ];
+  for (const [tx, ty, id] of ceilingSpots) {
+    const p = tileCenter(tx, ty);
+    props.push({
+      id,
+      tex: OfficeTex.CEILING_LIGHT,
+      x: p.x,
+      y: p.y,
+      floorDecal: true,
+      light: { radius: 105, color: 0xf3f1e8, intensity: 0.55 },
+    });
+  }
+
   return {
     width: LEVEL_WIDTH,
     height: LEVEL_HEIGHT,

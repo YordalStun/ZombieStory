@@ -5,8 +5,12 @@ import { GAME_WIDTH, GAME_HEIGHT, type Checkpoint } from "@/config/constants";
 import { AudioManager, MusicKey } from "@/core/managers/AudioManager";
 import { EventBus, Events } from "@/core/EventBus";
 import { showMainMenu, showSettingsMenu, hideMenu } from "@/ui/dom/MenuUI";
+import { showBrightnessCalibration } from "@/ui/dom/BrightnessUI";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
+
+/** Module-level, not per-scene-instance: HouseDefenseScene's win/loss beats route back through this scene, and the calibration screen should only ever greet the player once per session, not on every return to the menu. */
+let calibrationShown = false;
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -18,7 +22,12 @@ export class MainMenuScene extends Phaser.Scene {
     AudioManager.playMusic(MusicKey.MENU);
     setFadeInstant(false);
 
-    showMainMenu();
+    if (calibrationShown) {
+      showMainMenu();
+    } else {
+      calibrationShown = true;
+      showBrightnessCalibration(() => showMainMenu());
+    }
 
     const onNewGame = () => void this.startGame("NIGHT_CUTSCENE");
     const onContinue = () => {
