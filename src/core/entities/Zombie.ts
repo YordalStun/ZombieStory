@@ -8,6 +8,10 @@ export type ZombieState = "dormant" | "aggressive" | "dead";
 const CHASE_SPEED = 34;
 const HIT_FLASH_MS = 110;
 const MAX_HEALTH = 3;
+/** Knockback scales with the hit's damage — a heavy weapon should visibly shove harder than a light one, not just deal more health loss. */
+const KNOCKBACK_BASE_SPEED = 55;
+const KNOCKBACK_PER_DAMAGE = 30;
+const KNOCKBACK_MS = 160;
 /** Matches the HUD's own "DIM LIGHT" boundary (see HUDUI.ts) — attracted to light means even dim light should register, not just fully lit. */
 const AGGRO_LIGHT_THRESHOLD = 0.32;
 
@@ -42,6 +46,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   private hitFlashTimer = 0;
   private idleSway?: Phaser.Tweens.Tween;
   private alwaysHittable: boolean;
+  private knockbackUntil = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: ZombieOptions = {}) {
     super(scene, x, y, FigureTex.ZOMBIE);
@@ -97,15 +102,30 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.startIdleSway();
   }
 
-  /** Returns true if this hit killed it. */
-  hit(damage: number): boolean {
+  /**
+   * Returns true if this hit killed it. fromX/fromY (the attacker's
+   * position) are optional so non-combat callers can still deal damage
+   * without a knockback direction to compute — every real swing passes
+   * them, though (see swing.ts).
+   */
+  hit(damage: number, fromX?: number, fromY?: number): boolean {
     if (this.state === "dead") return false;
     if (this.state === "dormant" && !this.alwaysHittable) return false;
     this.health -= damage;
     this.hitFlashTimer = HIT_FLASH_MS;
     this.setTintFill(0xffffff);
-    AudioManager.playSfx(SfxKey.BANG, { volume: 0.4 });
+    AudioManager.playSfx(SfxKey.THUD, { volume: 0.5, rate: 0.9 + Math.random() * 0.15 });
     AudioManager.playSfx(SfxKey.GROAN, { volume: 0.55, rate: 1.15 + Math.random() * 0.2 });
+
+    if (fromX !== undefined && fromY !== undefined && this.health > 0) {
+      const dx = this.x - fromX;
+      const dy = this.y - fromY;
+      const len = Math.hypot(dx, dy) || 1;
+      const speed = KNOCKBACK_BASE_SPEED + damage * KNOCKBACK_PER_DAMAGE;
+      (this.body as Phaser.Physics.Arcade.Body).setVelocity((dx / len) * speed, (dy / len) * speed);
+      this.knockbackUntil = this.scene.time.now + KNOCKBACK_MS;
+    }
+
     if (this.health <= 0) {
       this.die();
       return true;
@@ -137,13 +157,22 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
    * trigger. Omit it entirely for the simple always-on/never-on scenes
    * (HomeArrivalScene, LeaveBuildingScene) — they're unaffected either way.
    */
-  update(_time: number, delta: number, targetX: number, targetY: number, aggroGate?: AggroGate): void {
+  update(time: number, delta: number, targetX: number, targetY: number, aggroGate?: AggroGate): void {
     if (this.state === "dead") return;
     this.setDepth(DEPTH.ACTOR_SORT_BASE + this.y);
 
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer -= delta;
       if (this.hitFlashTimer <= 0) this.clearTint();
+    }
+
+    if (time < this.knockbackUntil) return; // let the knockback shove play out uncontested
+    if (this.knockbackUntil > 0 && this.state !== "aggressive") {
+      // an aggressive zombie's own chase velocity overwrites this a few
+      // lines down anyway — only a dormant one needs an explicit stop, or
+      // it'd just keep drifting at knockback speed forever
+      (this.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+      this.knockbackUntil = 0;
     }
 
     if (aggroGate) {

@@ -48,6 +48,106 @@ const OBSTACLE_PLAN: Array<{ distance: number; lane: number; isZombie: boolean }
   { distance: 3450, lane: 1, isZombie: false },
 ];
 
+interface DecorPlanEntry {
+  distance: number;
+  x: number;
+  tex: string;
+  scale: number;
+  tint?: number;
+  angle?: number;
+  idleSway?: boolean;
+}
+
+interface ScrollingDecor extends DecorPlanEntry {
+  img?: Phaser.GameObjects.Image;
+  resolved: boolean;
+}
+
+const ROAD_EDGE = ROAD_TILE_SIZE.w / 2;
+const ROUTE_END = BREAKDOWN_DISTANCE + 150;
+
+/** Small seeded RNG so the roadside scatter is stable across reloads instead of reshuffling every playthrough. */
+function makeRng(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return (s % 10000) / 10000;
+  };
+}
+
+/**
+ * Everything alongside the road — this used to be nothing but a flat
+ * colour either side of the tarmac, which also meant camera shake had
+ * nothing to hide behind but empty background. Barriers run continuously
+ * (they're what actually reads as "motorway"); everything else scatters
+ * along the verge behind them.
+ */
+function buildDecorPlan(): DecorPlanEntry[] {
+  const plan: DecorPlanEntry[] = [];
+  const rng = makeRng(50321);
+
+  for (let d = 30; d < ROUTE_END; d += 26) {
+    for (const side of [-1, 1] as const) {
+      plan.push({ distance: d, x: ROAD_X + side * (ROAD_EDGE + 10), tex: ReturnDriveTex.BARRIER, scale: 1 });
+    }
+  }
+
+  for (let d = 80; d < ROUTE_END; ) {
+    const side = rng() < 0.5 ? -1 : 1;
+    plan.push({
+      distance: d,
+      x: ROAD_X + side * (ROAD_EDGE + 40 + rng() * 60),
+      tex: PropTex.TREE,
+      scale: 0.8 + rng() * 0.35,
+    });
+    d += 55 + rng() * 70;
+  }
+
+  for (let d = 200, i = 0; d < ROUTE_END; d += 340, i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    plan.push({ distance: d, x: ROAD_X + side * (ROAD_EDGE + 22), tex: PropTex.STREET_LAMP, scale: 0.85 });
+  }
+
+  [400, 1400, 2400, 3300].forEach((d, i) => {
+    const side = i % 2 === 0 ? 1 : -1;
+    plan.push({ distance: d, x: ROAD_X + side * (ROAD_EDGE + 26), tex: ReturnDriveTex.SIGN, scale: 1 });
+  });
+
+  // crashed cars, well clear of the drivable lanes — abandoned, not obstacles
+  [520, 1180, 2050, 2700, 3550].forEach((d, i) => {
+    const side = i % 2 === 0 ? -1 : 1;
+    plan.push({
+      distance: d,
+      x: ROAD_X + side * (ROAD_EDGE + 30 + rng() * 20),
+      tex: PropTex.CAR,
+      scale: 0.7,
+      tint: 0x3a3632,
+      angle: Math.round(rng() * 80 - 40),
+    });
+  });
+
+  // shambling on the verge, beyond the barrier — visible threat, not a hazard you can hit
+  [300, 950, 1700, 2450, 3150, 3700].forEach((d, i) => {
+    const side = i % 2 === 0 ? 1 : -1;
+    plan.push({
+      distance: d,
+      x: ROAD_X + side * (ROAD_EDGE + 35 + rng() * 50),
+      tex: FigureTex.ZOMBIE,
+      scale: 0.7,
+      idleSway: true,
+    });
+  });
+
+  // survivors waving for help from behind the barrier — DRIVER's pose is
+  // already both arms up ("resisting, not resigned"), reused as-is
+  [650, 1850, 3000].forEach((d, i) => {
+    const side = i % 2 === 0 ? -1 : 1;
+    plan.push({ distance: d, x: ROAD_X + side * (ROAD_EDGE + 24), tex: FigureTex.DRIVER, scale: 0.75, idleSway: true });
+  });
+
+  return plan;
+}
+
 /**
  * Path 1: a limited top-down drive (lane position + speed only — no U-turn,
  * no leaving the road, since there's nowhere else for this stretch to go)
@@ -71,6 +171,7 @@ export class ReturnDriveScene extends Phaser.Scene {
   private busy = true;
   private brokenDown = false;
   private obstacles: RoadObstacle[] = [];
+  private decor: ScrollingDecor[] = [];
 
   constructor() {
     super(SceneKeys.RETURN_DRIVE);
@@ -89,6 +190,7 @@ export class ReturnDriveScene extends Phaser.Scene {
       hit: false,
       resolved: false,
     }));
+    this.decor = buildDecorPlan().map((d) => ({ ...d, resolved: false }));
   }
 
   create(): void {
@@ -127,7 +229,13 @@ export class ReturnDriveScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    const dt = delta / 1000;
+    // Capped: delta can spike hugely after a stretch without regular frames
+    // (a backgrounded tab, a device hitch, a long unattended dialogue wait)
+    // — without a ceiling, a single such frame could silently fast-forward
+    // `distance` most of the way to the breakdown, skipping almost the
+    // entire drive. 100ms is generous for any real frame, so this never
+    // touches normal play.
+    const dt = Math.min(delta, 100) / 1000;
     this.road.tilePositionY -= this.speed * dt;
 
     const bars = Math.round(((this.speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 10);
@@ -151,6 +259,7 @@ export class ReturnDriveScene extends Phaser.Scene {
 
     this.distance += this.speed * dt;
     this.updateObstacles();
+    this.updateDecor();
 
     if (this.distance >= BREAKDOWN_DISTANCE) {
       void this.beginBreakdown();
@@ -183,6 +292,45 @@ export class ReturnDriveScene extends Phaser.Scene {
       if (y > GAME_HEIGHT + 40) {
         ob.img.destroy();
         ob.resolved = true;
+      }
+    }
+  }
+
+  /**
+   * Roadside scenery — barriers, trees, lamps, signs, wrecked cars, shambling
+   * zombies and survivors waving from the verge. Same lazy create-on-approach
+   * / destroy-on-pass scrolling as updateObstacles(), but purely decorative:
+   * everything here sits outside the drivable lane range, so there's no hit
+   * check.
+   */
+  private updateDecor(): void {
+    for (const d of this.decor) {
+      if (d.resolved) continue;
+      const y = CAR_Y - (d.distance - this.distance);
+      if (y < -60) continue;
+
+      if (!d.img) {
+        const img = this.add.image(d.x, y, d.tex).setDepth(2).setScale(d.scale);
+        if (d.tint !== undefined) img.setTint(d.tint);
+        if (d.angle !== undefined) img.setAngle(d.angle);
+        if (d.idleSway) {
+          this.tweens.add({
+            targets: img,
+            angle: { from: -3, to: 3 },
+            duration: 1100 + Math.random() * 600,
+            delay: Math.random() * 500,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.easeInOut",
+          });
+        }
+        d.img = img;
+      }
+      d.img.y = y;
+
+      if (y > GAME_HEIGHT + 60) {
+        d.img.destroy();
+        d.resolved = true;
       }
     }
   }

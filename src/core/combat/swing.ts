@@ -4,6 +4,7 @@ import type { Zombie } from "@/core/entities/Zombie";
 import type { WeaponDef } from "@/core/combat/weapons";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { PropTex } from "@/gfx/props";
+import { spawnImpactBurst } from "@/core/combat/impactFx";
 
 const FACING_ANGLE_DEG: Record<string, number> = { right: 0, down: 90, left: 180, up: 270 };
 
@@ -16,13 +17,25 @@ const WEAPON_HELD_TEX: Record<string, string> = {
   fire_poker: PropTex.FIRE_POKER,
 };
 
-/** Rough offset from Danny's feet-anchored origin to hand height, per facing. */
+/**
+ * Right against Danny's own hip/hand, not out at arm's length — the grip
+ * end (see getHeldSprite's origin) sits almost on top of this point,
+ * so the weapon reads as gripped rather than floating beside him.
+ * Player.setOrigin(0.5, 0.82) anchors him barely above his own feet
+ * (PLAYER_H=24 → the anchor sits just ~4px above the sprite's bottom
+ * edge), not centered — hand/waist height is a good ~10-16px *above*
+ * that anchor, not the handful of px this used before, which is what
+ * had the weapon reading as dragging near his feet instead of held.
+ */
 const HELD_OFFSET: Record<string, { x: number; y: number }> = {
-  right: { x: 7, y: -9 },
-  left: { x: -7, y: -9 },
-  down: { x: 5, y: -6 },
-  up: { x: -5, y: -11 },
+  right: { x: 5, y: -13 },
+  left: { x: -5, y: -13 },
+  down: { x: 4, y: -10 },
+  up: { x: -4, y: -16 },
 };
+
+/** Idle "held ready" tilt, added to the facing angle — lowers the tip a little rather than holding it dead level. */
+const REST_TILT_DEG = 20;
 
 function angleDiffDeg(a: number, b: number): number {
   let d = (a - b) % 360;
@@ -38,19 +51,29 @@ const swingTweens = new WeakMap<Player, Phaser.Tweens.Tween>();
 function getHeldSprite(scene: Phaser.Scene, player: Player, texKey: string): Phaser.GameObjects.Image {
   let sprite = heldSprites.get(player);
   if (!sprite) {
-    // Pivots near the handle end, matching where every weapon icon's grip sits (x=0).
-    sprite = scene.add.image(player.x, player.y, texKey).setOrigin(0.15, 0.5);
+    // Pivots right at the grip end (every weapon icon is drawn handle-first
+    // at x=0) so it rotates like it's actually held there, not spinning
+    // around its own middle.
+    sprite = scene.add.image(player.x, player.y, texKey).setOrigin(0.05, 0.5);
     heldSprites.set(player, sprite);
   }
   return sprite;
 }
 
+function positionHeldSprite(sprite: Phaser.GameObjects.Image, player: Player): void {
+  const offset = HELD_OFFSET[player.facing];
+  sprite.setPosition(player.x + offset.x, player.y + offset.y);
+  sprite.setDepth(player.depth + 1);
+  sprite.setFlipY(player.facing === "left" || player.facing === "up");
+}
+
 /**
  * Keeps Danny visibly holding whatever's equipped, resting near his hand.
- * Call once a frame from any scene that lets him fight. swingWeapon() takes
- * the same sprite over for the duration of an actual swing (see the tween
- * there), so this only repositions it between swings — it backs off on its
- * own while swingTweens has an entry for this player.
+ * Call once a frame from any scene that lets him fight. Position tracks the
+ * player every single frame, swing or not — only the ANGLE is ever handed
+ * off to swingWeapon()'s tween (see swingTweens below), so the weapon can
+ * never get left behind mid-attack the way it did when position was only
+ * ever set once, at the start of a swing.
  */
 export function updateHeldWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponDef | null): void {
   if (!weapon) {
@@ -63,20 +86,20 @@ export function updateHeldWeapon(scene: Phaser.Scene, player: Player, weapon: We
   const sprite = getHeldSprite(scene, player, texKey);
   if (sprite.texture.key !== texKey) sprite.setTexture(texKey);
   sprite.setVisible(true);
-  sprite.setDepth(player.depth + 1);
+  positionHeldSprite(sprite, player);
 
   if (swingTweens.has(player)) return;
-
-  const offset = HELD_OFFSET[player.facing];
-  sprite.setPosition(player.x + offset.x, player.y + offset.y);
-  sprite.setFlipY(player.facing === "left" || player.facing === "up");
-  sprite.setAngle(FACING_ANGLE_DEG[player.facing] - 18);
+  sprite.setAngle(FACING_ANGLE_DEG[player.facing] + REST_TILT_DEG);
 }
 
 /**
  * Swings the player's equipped weapon: a brief drawn arc for feedback, the
  * held sprite sweeping through that same arc, and a one-shot hit check
- * against whichever zombies are actually in range and within it.
+ * against whichever zombies are actually in range and within it. A
+ * connecting hit also throws a knockback, a blood/spark burst, and — for
+ * the heavier weapons — a touch of camera shake, all scaled by the
+ * weapon's own damage so a crowbar reads as noticeably more powerful than
+ * a knife lands, not just different numbers on a stats panel.
  * Player.facing is only ever one of the four cardinal directions (no finer
  * aim exists), so everything is centered on that.
  *
@@ -121,10 +144,7 @@ export function swingWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponD
     const sprite = getHeldSprite(scene, player, texKey);
     if (sprite.texture.key !== texKey) sprite.setTexture(texKey);
     sprite.setVisible(true);
-    sprite.setDepth(player.depth + 1);
-    const offset = HELD_OFFSET[player.facing];
-    sprite.setPosition(player.x + offset.x, player.y + offset.y);
-    sprite.setFlipY(player.facing === "left" || player.facing === "up");
+    positionHeldSprite(sprite, player);
     sprite.setAngle(facingDeg - weapon.arcDegrees / 2);
 
     swingTweens.get(player)?.stop();
@@ -138,6 +158,7 @@ export function swingWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponD
     swingTweens.set(player, tween);
   }
 
+  let hitAny = false;
   for (const zombie of zombies) {
     // Whether a non-aggressive zombie can actually be hit is zombie.hit()'s
     // own call (dormant obstacles are usually swing-proof, but a
@@ -148,6 +169,17 @@ export function swingWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponD
     if (dist > weapon.range) continue;
     const angleToZombie = Phaser.Math.RadToDeg(Phaser.Math.Angle.Between(player.x, player.y, zombie.x, zombie.y));
     if (angleDiffDeg(angleToZombie, facingDeg) > weapon.arcDegrees / 2) continue;
-    zombie.hit(weapon.damage);
+
+    const zx = zombie.x;
+    const zy = zombie.y;
+    zombie.hit(weapon.damage, player.x, player.y);
+    spawnImpactBurst(scene, zx, zy, weapon.damage);
+    hitAny = true;
+  }
+
+  // A light punch of shake on a connecting heavy hit — light weapons stay
+  // shake-free so it doesn't fatigue on every single tap.
+  if (hitAny && weapon.damage >= 2) {
+    scene.cameras.main.shake(90, 0.003);
   }
 }

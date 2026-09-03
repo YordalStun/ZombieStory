@@ -69,7 +69,11 @@ export class DadDriveScene extends Phaser.Scene {
     // layer here ever falls short of covering the full viewport
     this.cameras.main.setBackgroundColor(0x0a0a0c);
 
-    this.sky = this.add.image(GAME_WIDTH / 2, 135, DadDrivePovTex.SKY).setDepth(1);
+    // scaled up a touch beyond the canvas-exact texture size — camera.shake()
+    // isn't clamped by anything, so an edge-to-edge image here left the
+    // flat backstop colour peeking through at the seams during the swerve
+    // shake below; this just gives it margin to shake into
+    this.sky = this.add.image(GAME_WIDTH / 2, 135, DadDrivePovTex.SKY).setDepth(1).setScale(1.08);
 
     for (let i = 0; i < DASH_COUNT; i++) {
       const img = this.add.image(DAD_DRIVE_ROAD.centerX, DAD_DRIVE_ROAD.horizonY, DadDrivePovTex.LANE_DASH).setDepth(2);
@@ -77,7 +81,9 @@ export class DadDriveScene extends Phaser.Scene {
       this.dashT.push(i / DASH_COUNT);
     }
 
-    this.dashboard = this.add.image(GAME_WIDTH / 2, 135, DadDrivePovTex.DASHBOARD).setDepth(5);
+    // scaled together with the sky above, by the same factor, so the
+    // windshield cutout stays aligned with what's visible through it
+    this.dashboard = this.add.image(GAME_WIDTH / 2, 135, DadDrivePovTex.DASHBOARD).setDepth(5).setScale(1.08);
     this.roadAnimActive = true;
 
     void this.run();
@@ -184,8 +190,11 @@ export class DadDriveScene extends Phaser.Scene {
   private async crashBeat(): Promise<void> {
     const wallY = 90;
     this.cameras.main.setBackgroundColor(0x596b3e);
-    this.add.rectangle(GAME_WIDTH / 2, 210, GAME_WIDTH, 240, 0x4a5a34).setDepth(1); // driveway/lawn below
-    const wall = this.add.image(GAME_WIDTH / 2, wallY, DadDrivePovTex.HOUSE_WALL).setDepth(2);
+    // both oversized beyond the canvas — the impact shake below is strong
+    // enough (0.012) to otherwise expose their exactly-edge-to-edge borders
+    // against the flat backstop colour, which reads as a visible seam
+    this.add.rectangle(GAME_WIDTH / 2, 210, GAME_WIDTH + 100, 320, 0x4a5a34).setDepth(1); // driveway/lawn below
+    const wall = this.add.image(GAME_WIDTH / 2, wallY, DadDrivePovTex.HOUSE_WALL).setDepth(2).setScale(1.1);
 
     await fadeIn(700);
 

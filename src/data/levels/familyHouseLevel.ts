@@ -174,11 +174,18 @@ export function buildFamilyHouseGroundFloor(): FloorLevel {
   const grid = new TileGrid(GROUND_W, GROUND_H, -1);
   grid.fillRect(0, 0, GROUND_W, GROUND_H, TILE.WALL_EXT);
 
-  const HALL = { x: 14, y: 2, w: 6, h: 18 };
+  // Adjacent rooms share their border wall tile exactly (e.g. HALL.x sits
+  // right on LIVING's own right-wall column) rather than each drawing an
+  // independent wall with an uncarved gap tile between — that gap used to
+  // leave a 3-tile-thick (48px) wall between every pair of rooms, taller
+  // than Danny's own sprite. Every doorway cut, window, and interior prop
+  // below is already expressed relative to these rects, so closing the
+  // gaps here is enough on its own.
+  const HALL = { x: 12, y: 2, w: 6, h: 18 };
   const LIVING = { x: 2, y: 2, w: 11, h: 9 };
-  const KITCHEN = { x: 2, y: 12, w: 11, h: 8 };
-  const DINING = { x: 21, y: 2, w: 11, h: 9 };
-  const STUDY = { x: 21, y: 12, w: 11, h: 8 };
+  const KITCHEN = { x: 2, y: 10, w: 11, h: 8 };
+  const DINING = { x: 17, y: 2, w: 11, h: 9 };
+  const STUDY = { x: 17, y: 10, w: 11, h: 8 };
 
   grid.room(HALL.x, HALL.y, HALL.w, HALL.h, TILE.WALL, TILE.FLOOR_WOOD);
   grid.room(LIVING.x, LIVING.y, LIVING.w, LIVING.h, TILE.WALL, TILE.FLOOR_WOOD);
@@ -297,10 +304,11 @@ export function buildFamilyHouseUpperFloor(): FloorLevel {
   const grid = new TileGrid(UPPER_W, UPPER_H, -1);
   grid.fillRect(0, 0, UPPER_W, UPPER_H, TILE.WALL_EXT);
 
-  const LANDING = { x: 12, y: 2, w: 6, h: 14 };
+  // Same shared-wall fix as the ground floor — see the comment there.
+  const LANDING = { x: 10, y: 2, w: 6, h: 14 };
   const BED_A = { x: 2, y: 2, w: 9, h: 8 };
-  const BED_B = { x: 19, y: 2, w: 9, h: 8 };
-  const BATH = { x: 2, y: 11, w: 8, h: 5 };
+  const BED_B = { x: 15, y: 2, w: 9, h: 8 };
+  const BATH = { x: 2, y: 9, w: 8, h: 5 };
 
   grid.room(LANDING.x, LANDING.y, LANDING.w, LANDING.h, TILE.WALL, TILE.FLOOR_WOOD);
   grid.room(BED_A.x, BED_A.y, BED_A.w, BED_A.h, TILE.WALL, TILE.FLOOR_WOOD);

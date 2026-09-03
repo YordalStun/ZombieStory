@@ -187,6 +187,36 @@ export function synthBang(): Promise<AudioBuffer> {
   });
 }
 
+/** A blunt melee impact — a deep sine thump plus a soft low-passed noise body, deliberately without synthBang's sharp crack (that's gunshot/collision territory, this is a weapon connecting with something). */
+export function synthThud(): Promise<AudioBuffer> {
+  return render(0.22, (ctx) => {
+    const thump = ctx.createOscillator();
+    thump.type = "sine";
+    thump.frequency.setValueAtTime(110, 0);
+    thump.frequency.exponentialRampToValueAtTime(45, 0.15);
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(0.001, 0);
+    thumpGain.gain.exponentialRampToValueAtTime(0.6, 0.008);
+    thumpGain.gain.exponentialRampToValueAtTime(0.0001, 0.17);
+    thump.connect(thumpGain).connect(ctx.destination);
+    thump.start(0);
+    thump.stop(0.22);
+
+    const body = ctx.createBufferSource();
+    body.buffer = whiteNoiseBuffer(ctx, 0.08);
+    const bodyFilter = ctx.createBiquadFilter();
+    bodyFilter.type = "lowpass";
+    bodyFilter.frequency.setValueAtTime(400, 0);
+    bodyFilter.Q.setValueAtTime(0.6, 0);
+    const bodyGain = ctx.createGain();
+    bodyGain.gain.setValueAtTime(0.001, 0);
+    bodyGain.gain.exponentialRampToValueAtTime(0.3, 0.01);
+    bodyGain.gain.exponentialRampToValueAtTime(0.0001, 0.09);
+    body.connect(bodyFilter).connect(bodyGain).connect(ctx.destination);
+    body.start(0);
+  });
+}
+
 /** A low, wavering, distorted groan — two close-detuned oscillators beating against each other. */
 export function synthGroan(): Promise<AudioBuffer> {
   const duration = 1.6;

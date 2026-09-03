@@ -11,10 +11,16 @@ class WeaponManagerClass {
   private ownedIds: string[] = [];
   private equippedId: string | null = null;
 
+  /**
+   * One slot: Danny's hands, not a bag. There's no switch-weapon control,
+   * so letting pickups pile up just left every weapon but the first one
+   * dead weight in the panel — picking up a new one now drops whatever he
+   * was already holding.
+   */
   pickUp(id: string): void {
-    if (!WEAPONS[id] || this.ownedIds.includes(id)) return;
-    this.ownedIds.push(id);
-    if (!this.equippedId) this.equippedId = id;
+    if (!WEAPONS[id] || this.equippedId === id) return;
+    this.ownedIds = [id];
+    this.equippedId = id;
     this.emit();
   }
 
