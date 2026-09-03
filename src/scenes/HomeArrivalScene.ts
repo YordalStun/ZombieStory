@@ -11,7 +11,7 @@ import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
-import { swingWeapon } from "@/core/combat/swing";
+import { swingWeapon, updateHeldWeapon } from "@/core/combat/swing";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
@@ -190,14 +190,14 @@ export class HomeArrivalScene extends Phaser.Scene {
 
     this.updateInteractionFocus();
 
-    if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && !this.zombieDead) {
-      const weapon = WeaponManager.getEquipped();
-      if (weapon) {
-        swingWeapon(this, this.player, weapon, [this.zombie]);
-        if (this.zombie.state === "dead") {
-          this.zombieDead = true;
-          void this.onZombieDead();
-        }
+    const equippedWeapon = WeaponManager.getEquipped();
+    updateHeldWeapon(this, this.player, equippedWeapon);
+
+    if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && !this.zombieDead && equippedWeapon) {
+      swingWeapon(this, this.player, equippedWeapon, [this.zombie]);
+      if (this.zombie.state === "dead") {
+        this.zombieDead = true;
+        void this.onZombieDead();
       }
     }
 

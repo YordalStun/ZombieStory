@@ -64,7 +64,7 @@ export function buildFamilyHouseExterior(): FamilyHouseExteriorLevel {
   const door = tileCenter(doorCol - 0.5, H.y + H.h - 1);
   props.push({
     id: "front_door",
-    tex: PropTex.DOOR,
+    tex: PropTex.DOOR_WIDE,
     x: door.x,
     y: door.y,
     solid: true,
@@ -205,11 +205,10 @@ export function buildFamilyHouseGroundFloor(): FloorLevel {
   const stairs = tileCenter(HALL.x + 3, HALL.y + HALL.h - 2);
   props.push({
     id: "stairs_up",
-    tex: PropTex.PILLAR,
+    tex: PropTex.STAIRS,
     x: stairs.x,
     y: stairs.y,
     interactable: { prompt: "Go upstairs", range: 28 },
-    tint: 0x6a5a48,
   });
 
   const sofa = tileCenter(LIVING.x + 3, LIVING.y + 6);
@@ -279,6 +278,7 @@ export function buildFamilyHouseGroundFloor(): FloorLevel {
       { id: "living_window", x: tileCenter(3, LIVING.y).x, y: tileCenter(3, LIVING.y).y },
       { id: "kitchen_window", x: tileCenter(3, KITCHEN.y + KITCHEN.h - 1).x, y: tileCenter(3, KITCHEN.y + KITCHEN.h - 1).y },
       { id: "dining_window", x: tileCenter(DINING.x + DINING.w - 1, DINING.y).x, y: tileCenter(DINING.x + DINING.w - 1, DINING.y).y },
+      { id: "study_window", x: tileCenter(STUDY.x + STUDY.w - 1, STUDY.y + STUDY.h - 1).x, y: tileCenter(STUDY.x + STUDY.w - 1, STUDY.y + STUDY.h - 1).y },
     ],
     stairsAt: stairs,
     entryAt: tileCenter(HALL.x + 3, 1.5),
@@ -319,11 +319,10 @@ export function buildFamilyHouseUpperFloor(): FloorLevel {
   const stairs = tileCenter(LANDING.x + 3, LANDING.y + LANDING.h - 2);
   props.push({
     id: "stairs_down",
-    tex: PropTex.PILLAR,
+    tex: PropTex.STAIRS,
     x: stairs.x,
     y: stairs.y,
     interactable: { prompt: "Go downstairs", range: 28 },
-    tint: 0x6a5a48,
   });
 
   const bedA = tileCenter(BED_A.x + 2.5, BED_A.y + 3);
@@ -376,10 +375,10 @@ export function buildFamilyHouseUpperFloor(): FloorLevel {
         spawnY: bedBDoorway.y,
       },
     ],
-    breachPoints: [
-      { id: "bedroom_a_window", x: tileCenter(2, BED_A.y + 3).x, y: tileCenter(2, BED_A.y + 3).y },
-      { id: "bedroom_b_window", x: tileCenter(BED_B.x + BED_B.w - 1, BED_B.y + 3).x, y: tileCenter(BED_B.x + BED_B.w - 1, BED_B.y + 3).y },
-    ],
+    // Zombies only ever breach at ground level (see HouseDefenseScene's
+    // updateSpawning) — there's no plausible way for one to reach an
+    // upstairs window, so this floor deliberately has none.
+    breachPoints: [],
     stairsAt: stairs,
     entryAt: stairs,
     ambientLevel: 0.15,

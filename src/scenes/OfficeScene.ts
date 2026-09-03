@@ -571,6 +571,11 @@ export class OfficeScene extends Phaser.Scene {
       await DialoguePlayer.play(CHOSEN_DRIVE_LINES);
     } else {
       await DialoguePlayer.play(CHOSEN_PICKUP_LINES);
+      // Right after Danny texts Dad, not after he's already left the
+      // building — the timelapse is the time it takes Dad to drive over,
+      // so cutting straight to seeing him waiting outside the window
+      // afterwards actually tracks.
+      await this.citySunsetCutscene();
       await this.windowWaitBeat();
     }
 
@@ -737,7 +742,6 @@ export class OfficeScene extends Phaser.Scene {
       await this.bossInterceptBeat();
     } else {
       await this.giveBatBeat();
-      await this.citySunsetCutscene();
     }
 
     ObjectiveManager.complete("leave_office");

@@ -4,7 +4,10 @@ import { Player, type MoveInput } from "@/core/entities/Player";
 export type FamilyMemberPhase = "toSwitch" | "atSwitch" | "toExit" | "done";
 
 const ARRIVE_DIST = 5;
-const FLIP_PAUSE_MS = 900;
+// Long enough to actually register as "someone is doing something at that
+// switch" if the player happens to be in the room watching, not just a
+// blink-and-you-miss-it pause.
+const FLIP_PAUSE_MS = 1400;
 
 const HOLD_INPUT: MoveInput = { left: () => false, right: () => false, up: () => false, down: () => false };
 
@@ -72,8 +75,12 @@ export class FamilyMemberController {
         this.phase = "atSwitch";
         this.pauseTimer = FLIP_PAUSE_MS;
       } else if (this.phase === "toExit") {
+        // Settle into an idle pose and stay right there rather than
+        // vanishing — "done" only means no longer a target zombies can
+        // reach (see atRisk); the sprite itself lives until the scene
+        // tears the whole floor down on the next floor change.
+        this.player.update(time, delta, HOLD_INPUT);
         this.phase = "done";
-        this.player.destroy();
         this.onDone();
       }
       return;

@@ -12,7 +12,7 @@ import { LightingManager } from "@/core/managers/LightingManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
-import { swingWeapon } from "@/core/combat/swing";
+import { swingWeapon, updateHeldWeapon } from "@/core/combat/swing";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
@@ -188,14 +188,14 @@ export class CombatTutorialScene extends Phaser.Scene {
 
     if (this.busy || this.ended) return;
 
-    if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled()) {
-      const weapon = WeaponManager.getEquipped();
-      if (weapon) {
-        swingWeapon(this, this.player, weapon, []);
-        if (!this.hasSwung) {
-          this.hasSwung = true;
-          ObjectiveManager.complete("practice_swing");
-        }
+    const equippedWeapon = WeaponManager.getEquipped();
+    updateHeldWeapon(this, this.player, equippedWeapon);
+
+    if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && equippedWeapon) {
+      swingWeapon(this, this.player, equippedWeapon, []);
+      if (!this.hasSwung) {
+        this.hasSwung = true;
+        ObjectiveManager.complete("practice_swing");
       }
     }
 

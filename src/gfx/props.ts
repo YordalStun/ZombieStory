@@ -11,6 +11,7 @@ export const PropTex = {
   COUNTER: "prop_counter",
   FRIDGE: "prop_fridge",
   DOOR: "prop_door",
+  DOOR_WIDE: "prop_door_wide",
   CAR: "prop_car",
   ALARM_CLOCK: "prop_alarm_clock",
   SWITCH_OFF: "prop_switch_off",
@@ -35,6 +36,7 @@ export const PropTex = {
   TOILET: "prop_toilet",
   BATHTUB: "prop_bathtub",
   PILLAR: "prop_pillar",
+  STAIRS: "prop_stairs",
   BAT: "prop_bat",
   KNIFE: "prop_knife",
   CROWBAR: "prop_crowbar",
@@ -54,6 +56,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.COUNTER]: { w: 32, h: 16 },
   [PropTex.FRIDGE]: { w: 16, h: 24 },
   [PropTex.DOOR]: { w: 16, h: 48 },
+  [PropTex.DOOR_WIDE]: { w: 32, h: 16 },
   [PropTex.CAR]: { w: 40, h: 64 },
   [PropTex.ALARM_CLOCK]: { w: 10, h: 8 },
   [PropTex.SWITCH_OFF]: { w: 6, h: 10 },
@@ -78,6 +81,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.TOILET]: { w: 12, h: 14 },
   [PropTex.BATHTUB]: { w: 16, h: 30 },
   [PropTex.PILLAR]: { w: 14, h: 14 },
+  [PropTex.STAIRS]: { w: 16, h: 16 },
   [PropTex.BAT]: { w: 18, h: 8 },
   [PropTex.KNIFE]: { w: 14, h: 6 },
   [PropTex.CROWBAR]: { w: 20, h: 7 },
@@ -164,6 +168,16 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 1, h / 2 + 1, w - 2, h / 2 - 2, Palette.doorWood);
     rect(ctx, w / 2 - 1, h / 2 - 6, 2, 2, 0xd8c68a);
     rect(ctx, w / 2 - 1, h / 2 + 4, 2, 2, 0xd8c68a);
+  });
+
+  // companion shape for a doorway cut through a *horizontal* wall (two
+  // columns wide, one row tall) — wide/short, two panels side by side
+  draw(scene, PropTex.DOOR_WIDE, (ctx, w, h) => {
+    rect(ctx, 0, 0, w, h, Palette.doorFrame);
+    rect(ctx, 1, 1, w / 2 - 2, h - 2, Palette.doorWood);
+    rect(ctx, w / 2 + 1, 1, w / 2 - 2, h - 2, Palette.doorWood);
+    rect(ctx, w / 2 - 4, h / 2 - 1, 2, 2, 0xd8c68a);
+    rect(ctx, w / 2 + 2, h / 2 - 1, 2, 2, 0xd8c68a);
   });
 
   draw(scene, PropTex.CAR, (ctx, w, h) => {
@@ -368,6 +382,18 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 0, 0, w, 3, 0x9d9d98);
     rect(ctx, 0, h - 3, w, 3, 0x6e6e6a);
     outline(ctx, 0, 0, w, h, 0x5c5c58);
+  });
+
+  // top-down staircase — alternating tread bands, lightest at the near
+  // edge and darkening toward the far end, reading as steps receding away
+  draw(scene, PropTex.STAIRS, (ctx, w, h) => {
+    rect(ctx, 0, 0, w, h, 0x2a261e);
+    const shades = [0x8a8068, 0x7a7058, 0x6a6048, 0x5a5240, 0x4a4436];
+    const stepH = h / shades.length;
+    shades.forEach((color, i) => {
+      rect(ctx, 1, h - (i + 1) * stepH, w - 2, stepH - 1, color);
+    });
+    outline(ctx, 0, 0, w, h, 0x1c1a14);
   });
 
   // the cricket bat — drawn lying flat/horizontal so a thrown or swung

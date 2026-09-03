@@ -34,14 +34,16 @@ function makeChoiceRow<T extends string>(
   const group = document.createElement("div");
   group.className = "settings-choice-options";
 
+  let selected = current;
   const buttons = options.map((opt) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "settings-choice-btn";
     btn.textContent = opt.label;
-    btn.classList.toggle("active", opt.value === current);
+    btn.classList.toggle("active", opt.value === selected);
     btn.addEventListener("click", () => {
-      if (opt.value === current) return;
+      if (opt.value === selected) return;
+      selected = opt.value;
       AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.4 });
       buttons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");

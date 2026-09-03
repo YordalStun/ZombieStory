@@ -21,7 +21,7 @@ import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
 import { PlayerHealth } from "@/core/managers/PlayerHealth";
-import { swingWeapon } from "@/core/combat/swing";
+import { swingWeapon, updateHeldWeapon } from "@/core/combat/swing";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
@@ -59,7 +59,6 @@ interface LiveZombie {
 const PLAYER_MAX_HP = 5;
 const ZOMBIE_START_HEALTH = 3;
 const TOTAL_ZOMBIES = 8;
-const ZOMBIES_PER_FLOOR = 4;
 const AGGRO_RANGE = 90;
 const ATTACK_RANGE = 14;
 const ATTACK_COOLDOWN_MS = 900;
@@ -111,7 +110,6 @@ export class HouseDefenseScene extends Phaser.Scene {
   private groundRecords: ZombieRecord[] = [];
   private upperRecords: ZombieRecord[] = [];
   private groundSpawnedCount = 0;
-  private upperSpawnedCount = 0;
   private spawnCountdown = 0;
   private zombiesKilled = 0;
   private hordeAnnounced = false;
@@ -139,7 +137,6 @@ export class HouseDefenseScene extends Phaser.Scene {
     this.groundRecords = [];
     this.upperRecords = [];
     this.groundSpawnedCount = 0;
-    this.upperSpawnedCount = 0;
     this.spawnCountdown = 0;
     this.zombiesKilled = 0;
     this.hordeAnnounced = false;
@@ -310,8 +307,12 @@ export class HouseDefenseScene extends Phaser.Scene {
 
   private spawnZombieFromRecord(record: ZombieRecord, data: FloorLevel): Zombie {
     const point = data.breachPoints[record.breachIndex % data.breachPoints.length];
+    // Deliberately NOT lit (see LightingManager.makeLit) — zombies stay
+    // visible at full brightness regardless of room darkness. The house's
+    // win condition requires every room light off, so darkening threats
+    // along with the environment would make the last stretch unwinnable to
+    // actually see and finish.
     const zombie = new Zombie(this, point.x, point.y, { state: "dormant", health: record.health, alwaysHittable: true });
-    this.lighting.makeLit(zombie);
     this.colliders.push(this.physics.add.collider(zombie, this.wallLayer));
     this.colliders.push(this.physics.add.collider(this.player, zombie));
     for (const entry of this.propsById.values()) {
@@ -338,16 +339,18 @@ export class HouseDefenseScene extends Phaser.Scene {
   }
 
   private updateSpawning(delta: number): void {
-    const spawnedCount = this.currentFloor === "ground" ? this.groundSpawnedCount : this.upperSpawnedCount;
-    if (spawnedCount >= ZOMBIES_PER_FLOOR) return;
+    // Every zombie breaches at ground level (see familyHouseLevel.ts) —
+    // there's no upstairs breach point left to spawn from, so spawning
+    // simply pauses while Danny's up there and resumes when he's back down.
+    if (this.currentFloor !== "ground") return;
+    if (this.groundSpawnedCount >= TOTAL_ZOMBIES) return;
 
     this.spawnCountdown -= delta;
     if (this.spawnCountdown > 0) return;
     this.spawnCountdown = SPAWN_INTERVAL_MS;
 
     this.spawnNewZombie();
-    if (this.currentFloor === "ground") this.groundSpawnedCount++;
-    else this.upperSpawnedCount++;
+    this.groundSpawnedCount++;
   }
 
   private reapDeadZombies(): void {
@@ -412,8 +415,13 @@ export class HouseDefenseScene extends Phaser.Scene {
   }
 
   private updateFamilyMembers(time: number, delta: number): void {
+    // Deliberately not filtering out finished members here — they now stay
+    // put (see FamilyMemberController) instead of self-destroying, and
+    // loadFloor()'s teardown is what actually destroys them, in full, on
+    // the next floor change. Dropping them from this array the moment
+    // they're done would orphan their sprite: still on screen, but no
+    // longer reachable by anything that could destroy it.
     for (const fm of this.familyMembers) fm.update(time, delta);
-    this.familyMembers = this.familyMembers.filter((fm) => fm.atRisk);
   }
 
   private checkFamilyKilled(): boolean {
@@ -551,17 +559,17 @@ export class HouseDefenseScene extends Phaser.Scene {
       return;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled()) {
-      const weapon = WeaponManager.getEquipped();
-      if (weapon) {
-        swingWeapon(
-          this,
-          this.player,
-          weapon,
-          this.liveZombies.map((lz) => lz.zombie),
-        );
-        this.reapDeadZombies();
-      }
+    const equippedWeapon = WeaponManager.getEquipped();
+    updateHeldWeapon(this, this.player, equippedWeapon);
+
+    if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && equippedWeapon) {
+      swingWeapon(
+        this,
+        this.player,
+        equippedWeapon,
+        this.liveZombies.map((lz) => lz.zombie),
+      );
+      this.reapDeadZombies();
     }
 
     if (
@@ -612,7 +620,23 @@ export class HouseDefenseScene extends Phaser.Scene {
   }
 
   private async handleInteract(id: string | null): Promise<void> {
-    if (id === "stairs_up" || id === "stairs_down") await this.useStairs();
+    if (id === "stairs_up" || id === "stairs_down") {
+      await this.useStairs();
+      return;
+    }
+    if (id?.startsWith("pickup_")) this.pickUpWeapon(id);
+  }
+
+  private pickUpWeapon(id: string): void {
+    const entry = this.propsById.get(id);
+    if (!entry) return;
+    const weaponId = id.slice("pickup_".length);
+    WeaponManager.pickUp(weaponId);
+    AudioManager.playSfx(SfxKey.INTERACT, { volume: 0.6 });
+    entry.sprite.destroy();
+    this.propsById.delete(id);
+    this.focusedInteractable = null;
+    EventBus.emit(Events.PROMPT_HIDE);
   }
 
   private async useStairs(): Promise<void> {
