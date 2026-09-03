@@ -48,7 +48,8 @@ export type Checkpoint =
   | "RETURN_DRIVE"
   | "DAD_DRIVE"
   | "COMBAT_TUTORIAL"
-  | "HOME_ARRIVAL";
+  | "HOME_ARRIVAL"
+  | "HOUSE_DEFENSE";
 
 export const CHECKPOINTS: Record<Checkpoint, Checkpoint> = {
   NIGHT_CUTSCENE: "NIGHT_CUTSCENE",
@@ -60,4 +61,5 @@ export const CHECKPOINTS: Record<Checkpoint, Checkpoint> = {
   DAD_DRIVE: "DAD_DRIVE",
   COMBAT_TUTORIAL: "COMBAT_TUTORIAL",
   HOME_ARRIVAL: "HOME_ARRIVAL",
+  HOUSE_DEFENSE: "HOUSE_DEFENSE",
 };

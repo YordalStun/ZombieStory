@@ -3,6 +3,7 @@ import "@/styles.css";
 import "@/ui/dom/ui.css";
 import "@/ui/dom/computer.css";
 import "@/ui/dom/weapon.css";
+import "@/ui/dom/debugmenu.css";
 import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { BootScene } from "@/scenes/BootScene";
 import { PreloadScene } from "@/scenes/PreloadScene";
@@ -15,6 +16,7 @@ import { ReturnDriveScene } from "@/scenes/ReturnDriveScene";
 import { DadDriveScene } from "@/scenes/DadDriveScene";
 import { CombatTutorialScene } from "@/scenes/CombatTutorialScene";
 import { HomeArrivalScene } from "@/scenes/HomeArrivalScene";
+import { HouseDefenseScene } from "@/scenes/HouseDefenseScene";
 import { initUIRoot, syncViewport } from "@/ui/dom/UIRoot";
 import { initDialogueBoxUI } from "@/ui/dom/DialogueBoxUI";
 import { initHUDUI } from "@/ui/dom/HUDUI";
@@ -22,6 +24,7 @@ import { initFadeUI } from "@/ui/dom/FadeUI";
 import { initComputerUI } from "@/ui/dom/ComputerUI";
 import { initWeaponUI } from "@/ui/dom/WeaponUI";
 import { initPathChoiceUI } from "@/ui/dom/PathChoiceUI";
+import { initDebugMenuUI } from "@/ui/dom/DebugMenuUI";
 
 // Lighting (Light2D) is WebGL-only in Phaser 3, hence an explicit WEBGL
 // context rather than AUTO — see LightingManager.
@@ -54,6 +57,7 @@ const config: Phaser.Types.Core.GameConfig = {
     DadDriveScene,
     CombatTutorialScene,
     HomeArrivalScene,
+    HouseDefenseScene,
   ],
 };
 
@@ -66,6 +70,7 @@ initFadeUI();
 initComputerUI();
 initWeaponUI();
 initPathChoiceUI();
+initDebugMenuUI(game);
 
 const resync = () => syncViewport(game);
 window.addEventListener("resize", resync);

@@ -36,6 +36,10 @@ export const PropTex = {
   BATHTUB: "prop_bathtub",
   PILLAR: "prop_pillar",
   BAT: "prop_bat",
+  KNIFE: "prop_knife",
+  CROWBAR: "prop_crowbar",
+  FRYING_PAN: "prop_frying_pan",
+  FIRE_POKER: "prop_fire_poker",
 } as const;
 
 // Display sizes, in px, at native (unscaled) resolution — used for physics
@@ -75,6 +79,10 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.BATHTUB]: { w: 16, h: 30 },
   [PropTex.PILLAR]: { w: 14, h: 14 },
   [PropTex.BAT]: { w: 18, h: 8 },
+  [PropTex.KNIFE]: { w: 14, h: 6 },
+  [PropTex.CROWBAR]: { w: 20, h: 7 },
+  [PropTex.FRYING_PAN]: { w: 18, h: 10 },
+  [PropTex.FIRE_POKER]: { w: 22, h: 6 },
 };
 
 function draw(
@@ -370,5 +378,42 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 6, h / 2 - 1, 6, 2, 0xc9a565);
     rect(ctx, 12, h / 2 - 2, 6, 4, 0xd8b878);
     rect(ctx, 12, h / 2 - 2, 6, 1, 0xe8cc94);
+  });
+
+  // every new house-defense weapon pickup below follows the same
+  // lying-flat-horizontal convention as the bat, for the same reason
+  draw(scene, PropTex.KNIFE, (ctx, _w, h) => {
+    rect(ctx, 0, h / 2 - 1, 5, 2, 0x3a2c1e); // handle
+    rect(ctx, 5, h / 2 - 2, 9, 4, 0xd8dde2); // blade
+    rect(ctx, 5, h / 2 - 2, 9, 1, 0xf0f4f6); // blade highlight
+    rect(ctx, 13, h / 2 - 1, 1, 2, 0xaab0b6); // tip
+  });
+
+  draw(scene, PropTex.CROWBAR, (ctx, w, h) => {
+    rect(ctx, 2, h / 2 - 1, w - 4, 2, 0x2a2a30);
+    rect(ctx, 2, h / 2 - 1, w - 4, 1, 0x45454e);
+    rect(ctx, 0, h / 2 - 3, 5, 3, 0x2a2a30); // curved claw end
+    rect(ctx, 0, h / 2 - 3, 2, 3, 0x1a1a1e);
+    rect(ctx, w - 4, h / 2 - 2, 4, 4, 0x1a1a1e); // flat end
+  });
+
+  draw(scene, PropTex.FRYING_PAN, (ctx, _w, h) => {
+    rect(ctx, 0, h / 2 - 1, 7, 2, 0x2a2018); // handle
+    ctx.fillStyle = "#3a3a3e";
+    ctx.beginPath();
+    ctx.arc(12, h / 2, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#55565c";
+    ctx.beginPath();
+    ctx.arc(11, h / 2 - 1, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  draw(scene, PropTex.FIRE_POKER, (ctx, w, h) => {
+    rect(ctx, 4, h / 2 - 1, w - 6, 2, 0x2c2c30);
+    rect(ctx, 4, h / 2 - 1, w - 6, 1, 0x48484e);
+    rect(ctx, 0, h / 2 - 2, 5, 4, 0x1a1a1e); // handle grip
+    rect(ctx, w - 3, h / 2 - 2, 3, 1, 0x1a1a1e); // hooked tip
+    rect(ctx, w - 3, h / 2 - 2, 1, 3, 0x1a1a1e);
   });
 }

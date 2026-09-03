@@ -82,6 +82,13 @@ export class LightingManager {
     flicker?: FlickerConfig,
     colorCycle?: ColorCycleConfig,
   ): void {
+    // Re-registering an id a caller has used before (e.g. a scene that
+    // tears down and rebuilds the same room more than once) would otherwise
+    // leak the previous Phaser Light — it stays live in scene.lights with
+    // no handle left to ever turn it off again, silently double-lighting
+    // the spot. Clearing any existing entry first makes addLight() safe to
+    // call repeatedly with the same id.
+    this.remove(id);
     const light = this.scene.lights.addLight(x, y, radius, color, intensity);
     this.lightsById.set(id, {
       light,

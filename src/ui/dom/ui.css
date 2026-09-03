@@ -43,6 +43,13 @@
   display: none;
 }
 
+#hud-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 #objective-text {
   background: rgba(8, 8, 12, 0.55);
   border: 1px solid rgba(240, 236, 226, 0.25);
@@ -53,6 +60,63 @@
 
 #objective-text.hidden {
   display: none;
+}
+
+#health-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(8, 8, 12, 0.55);
+  border: 1px solid rgba(240, 236, 226, 0.25);
+  padding: 5px 10px;
+}
+
+#health-bar.hidden {
+  display: none;
+}
+
+#health-label {
+  font-size: clamp(12px, 1vw, 15px);
+  color: #c9736f;
+  letter-spacing: 0.05em;
+}
+
+#health-segments {
+  display: flex;
+  gap: 3px;
+}
+
+.health-segment {
+  width: clamp(10px, 0.9vw, 14px);
+  height: clamp(12px, 1.1vw, 16px);
+  background: #2c1418;
+  border: 1px solid rgba(240, 236, 226, 0.25);
+}
+
+.health-segment.filled {
+  background: #d94f4f;
+  box-shadow: 0 0 4px rgba(217, 79, 79, 0.7);
+}
+
+/* low HP reads as an actual warning, not just a shorter bar */
+#health-bar.critical #health-label {
+  animation: health-pulse 0.7s ease-in-out infinite;
+}
+
+#health-bar.critical .health-segment.filled {
+  background: #ff6a4d;
+  box-shadow: 0 0 6px rgba(255, 106, 77, 0.9);
+  animation: health-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes health-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .objective-title {

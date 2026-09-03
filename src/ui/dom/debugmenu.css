@@ -1,0 +1,88 @@
+/* ---------- debug scene-jump menu ---------- */
+
+#debug-jump-button {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 10000;
+  font-family: "VT323", monospace;
+  font-size: 13px;
+  color: #f0ece2;
+  background: rgba(8, 8, 12, 0.75);
+  border: 1px solid rgba(240, 236, 226, 0.35);
+  padding: 5px 10px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#debug-jump-button:hover {
+  border-color: #ffd15c;
+  color: #ffd15c;
+}
+
+#debug-jump-panel {
+  position: fixed;
+  top: 38px;
+  right: 8px;
+  z-index: 10000;
+  width: clamp(220px, 20vw, 300px);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: rgba(8, 8, 12, 0.92);
+  border: 1px solid rgba(240, 236, 226, 0.35);
+  padding: 10px 12px 12px;
+  pointer-events: auto;
+  font-family: "VT323", monospace;
+}
+
+#debug-jump-panel.hidden {
+  display: none;
+}
+
+.debug-jump-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: #ffd15c;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid rgba(240, 236, 226, 0.25);
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+.debug-jump-hint {
+  font-size: 11px;
+  color: #8a8578;
+}
+
+.debug-jump-group {
+  font-size: 11px;
+  color: #8a8578;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 8px 0 3px;
+}
+
+.debug-jump-group:first-of-type {
+  margin-top: 2px;
+}
+
+.debug-jump-target {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: "VT323", monospace;
+  font-size: 14px;
+  color: #f0ece2;
+  background: rgba(240, 236, 226, 0.05);
+  border: 1px solid rgba(240, 236, 226, 0.18);
+  padding: 5px 8px;
+  margin-bottom: 3px;
+  cursor: pointer;
+}
+
+.debug-jump-target:hover {
+  background: rgba(255, 209, 92, 0.14);
+  border-color: #ffd15c;
+}

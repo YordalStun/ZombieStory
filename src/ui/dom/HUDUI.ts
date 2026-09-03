@@ -1,5 +1,6 @@
 import { EventBus, Events } from "@/core/EventBus";
 import type { ObjectiveState } from "@/core/managers/ObjectiveManager";
+import type { HealthState } from "@/core/managers/PlayerHealth";
 
 export interface PromptShowPayload {
   text: string;
@@ -17,6 +18,8 @@ export function initHUDUI(): void {
   const lightDot = document.getElementById("light-dot")!;
   const lightLabel = document.getElementById("light-label")!;
   const promptEl = document.getElementById("interact-prompt")!;
+  const healthBarEl = document.getElementById("health-bar")!;
+  const healthSegmentsEl = document.getElementById("health-segments")!;
 
   setHudVisible(false);
 
@@ -59,6 +62,23 @@ export function initHUDUI(): void {
     }
     lightLabel.textContent = label;
     lightDot.className = cls;
+  });
+
+  EventBus.on(Events.PLAYER_HEALTH_CHANGED, (state: HealthState) => {
+    healthBarEl.classList.remove("hidden");
+    if (healthSegmentsEl.childElementCount !== state.maxHp) {
+      healthSegmentsEl.replaceChildren();
+      for (let i = 0; i < state.maxHp; i++) {
+        const seg = document.createElement("span");
+        seg.className = "health-segment";
+        healthSegmentsEl.appendChild(seg);
+      }
+    }
+    Array.from(healthSegmentsEl.children).forEach((seg, i) => {
+      seg.classList.toggle("filled", i < state.hp);
+      seg.classList.toggle("empty", i >= state.hp);
+    });
+    healthBarEl.classList.toggle("critical", state.hp > 0 && state.hp <= Math.ceil(state.maxHp * 0.3));
   });
 
   EventBus.on(Events.PROMPT_SHOW, (data: PromptShowPayload) => {

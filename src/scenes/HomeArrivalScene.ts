@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
-import { TILE_SIZE, DEPTH, PLAYER_NAME } from "@/config/constants";
+import { TILE_SIZE, DEPTH } from "@/config/constants";
 import { TILESET_KEY, WALL_TILE_INDICES } from "@/gfx/tileset";
-import { buildApartmentLevel, type PropSpec } from "@/data/levels/apartmentLevel";
+import type { PropSpec } from "@/data/levels/apartmentLevel";
+import { buildFamilyHouseExterior } from "@/data/levels/familyHouseLevel";
 import { Player, type MoveInput } from "@/core/entities/Player";
 import { Zombie } from "@/core/entities/Zombie";
 import { LightingManager } from "@/core/managers/LightingManager";
@@ -23,22 +24,19 @@ import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
-import { showEndSlate, hideMenu } from "@/ui/dom/MenuUI";
 
 interface PropEntry {
   spec: PropSpec;
   sprite: Phaser.GameObjects.Image;
 }
 
-const PLAYER_SPAWN_TILE = { tx: 30, ty: 11 };
-const ZOMBIE_SPAWN_TILE = { tx: 27, ty: 8 };
-
 /**
  * Where both paths rejoin: a real, aggressive Zombie stands between the
  * street and the front door — the first time the player actually has to
- * fight, using the swing they only practiced on nothing until now. Reuses
- * buildApartmentLevel()'s exterior wholesale (same house the game opened
- * in) rather than modelling a second copy of it.
+ * fight, using the swing they only practiced on nothing until now. This is
+ * Danny's parents' house, not his own apartment — a bigger, separate
+ * building (see familyHouseLevel.ts) since the next chapter (HouseDefenseScene)
+ * needs multiple floors' worth of rooms behind that door.
  */
 export class HomeArrivalScene extends Phaser.Scene {
   private lighting!: LightingManager;
@@ -68,9 +66,7 @@ export class HomeArrivalScene extends Phaser.Scene {
     setFadeInstant(true);
     setHudVisible(true);
 
-    const level = buildApartmentLevel();
-    const doorSpec = level.props.find((p) => p.id === "front_door");
-    if (doorSpec?.interactable) doorSpec.interactable.prompt = "Go inside";
+    const level = buildFamilyHouseExterior();
 
     const worldW = level.width * TILE_SIZE;
     const worldH = level.height * TILE_SIZE;
@@ -92,12 +88,10 @@ export class HomeArrivalScene extends Phaser.Scene {
 
     for (const spec of level.props) this.createProp(spec);
 
-    const zombieSpawn = { x: ZOMBIE_SPAWN_TILE.tx * TILE_SIZE + TILE_SIZE / 2, y: ZOMBIE_SPAWN_TILE.ty * TILE_SIZE + TILE_SIZE / 2 };
-    this.zombie = new Zombie(this, zombieSpawn.x, zombieSpawn.y, { state: "aggressive" });
+    this.zombie = new Zombie(this, level.zombieSpawn.x, level.zombieSpawn.y, { state: "aggressive" });
     this.lighting.makeLit(this.zombie);
 
-    const playerSpawn = { x: PLAYER_SPAWN_TILE.tx * TILE_SIZE + TILE_SIZE / 2, y: PLAYER_SPAWN_TILE.ty * TILE_SIZE + TILE_SIZE / 2 };
-    this.player = new Player(this, playerSpawn.x, playerSpawn.y);
+    this.player = new Player(this, level.playerStart.x, level.playerStart.y);
     this.player.setOutfit("dressed");
     this.lighting.makeLit(this.player);
     this.player.setControlsEnabled(false);
@@ -290,11 +284,7 @@ export class HomeArrivalScene extends Phaser.Scene {
 
     await fadeOut(1400);
     SaveManager.saveCheckpoint("HOME_ARRIVAL");
-    showEndSlate("HOME.", `${PLAYER_NAME} is inside. For now, that's enough.`);
-    await fadeIn(600);
-    await this.wait(4000);
-    hideMenu();
-    this.scene.start(SceneKeys.MAIN_MENU);
+    this.scene.start(SceneKeys.HOUSE_DEFENSE);
   }
 
   private say(script: DialogueScript): Promise<void> {

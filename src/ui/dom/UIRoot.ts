@@ -19,7 +19,13 @@ export function initUIRoot(): HTMLDivElement {
   root.id = "ui-root";
   root.innerHTML = `
     <div id="hud-layer">
-      <div id="objective-text" class="hidden"></div>
+      <div id="hud-left">
+        <div id="objective-text" class="hidden"></div>
+        <div id="health-bar" class="hidden">
+          <span id="health-label">HP</span>
+          <div id="health-segments"></div>
+        </div>
+      </div>
       <div id="light-indicator">
         <span id="light-dot" class="dark"></span>
         <span id="light-label">IN SHADOW</span>

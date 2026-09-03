@@ -44,7 +44,11 @@ export function swingWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponD
   });
 
   for (const zombie of zombies) {
-    if (zombie.state !== "aggressive") continue;
+    // Whether a non-aggressive zombie can actually be hit is zombie.hit()'s
+    // own call (dormant obstacles are usually swing-proof, but a
+    // house-defense zombie that's lost the player's light stays finishable
+    // via alwaysHittable) — this only needs to rule out one already dead.
+    if (zombie.state === "dead") continue;
     const dist = Phaser.Math.Distance.Between(player.x, player.y, zombie.x, zombie.y);
     if (dist > weapon.range) continue;
     const angleToZombie = Phaser.Math.RadToDeg(Phaser.Math.Angle.Between(player.x, player.y, zombie.x, zombie.y));

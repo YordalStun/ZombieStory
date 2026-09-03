@@ -36,4 +36,5 @@ export const Events = {
 
   // Combat (Phaser scene / manager -> DOM)
   WEAPONS_CHANGED: "weapons:changed",
+  PLAYER_HEALTH_CHANGED: "player:health-changed",
 } as const;

@@ -8,10 +8,25 @@ export type ZombieState = "dormant" | "aggressive" | "dead";
 const CHASE_SPEED = 34;
 const HIT_FLASH_MS = 110;
 const MAX_HEALTH = 3;
+/** Matches the HUD's own "DIM LIGHT" boundary (see HUDUI.ts) — attracted to light means even dim light should register, not just fully lit. */
+const AGGRO_LIGHT_THRESHOLD = 0.32;
 
 export interface ZombieOptions {
   state?: ZombieState;
   health?: number;
+  /**
+   * House-defense zombies only: hit() still works even while dormant/calm,
+   * so the player can finish off a zombie they've cornered even after it's
+   * lost track of them in the dark. Everywhere else an un-woken zombie is
+   * a pure obstacle, deliberately not interactive either way.
+   */
+  alwaysHittable?: boolean;
+}
+
+/** Passed to update() to drive continuous light+proximity aggro instead of the simple one-way wake(). Omit entirely for the existing always-on/never-on scenes — nothing changes for them. */
+export interface AggroGate {
+  lightLevel: number;
+  range: number;
 }
 
 /**
@@ -26,6 +41,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   health: number;
   private hitFlashTimer = 0;
   private idleSway?: Phaser.Tweens.Tween;
+  private alwaysHittable: boolean;
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: ZombieOptions = {}) {
     super(scene, x, y, FigureTex.ZOMBIE);
@@ -40,6 +56,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
 
     this.health = opts.health ?? MAX_HEALTH;
     this.state = opts.state ?? "dormant";
+    this.alwaysHittable = opts.alwaysHittable ?? false;
     this.setDepth(DEPTH.ACTOR_SORT_BASE + y);
     this.startIdleSway();
   }
@@ -65,9 +82,25 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     this.setAngle(0);
   }
 
+  /**
+   * Reverses wake(): loses the player (out of light or range) and settles
+   * back to a calm, idle stance. Only ever called by the continuous
+   * AggroGate check in update() — nothing else needs a woken zombie to
+   * stand back down.
+   */
+  private calm(): void {
+    if (this.state !== "aggressive") return;
+    this.state = "dormant";
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setVelocity(0, 0);
+    body.setImmovable(true);
+    this.startIdleSway();
+  }
+
   /** Returns true if this hit killed it. */
   hit(damage: number): boolean {
-    if (this.state !== "aggressive") return false;
+    if (this.state === "dead") return false;
+    if (this.state === "dormant" && !this.alwaysHittable) return false;
     this.health -= damage;
     this.hitFlashTimer = HIT_FLASH_MS;
     this.setTintFill(0xffffff);
@@ -96,14 +129,28 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
-  /** Call every frame while aggressive; harmless no-op in any other state. */
-  update(_time: number, delta: number, targetX: number, targetY: number): void {
+  /**
+   * Call every frame. `aggroGate`, when passed, re-evaluates every frame
+   * instead of relying on a one-way wake(): close enough AND the target is
+   * standing somewhere lit wakes it, and losing either condition calms it
+   * back down — "attracted to light" as a continuous state, not a single
+   * trigger. Omit it entirely for the simple always-on/never-on scenes
+   * (HomeArrivalScene, LeaveBuildingScene) — they're unaffected either way.
+   */
+  update(_time: number, delta: number, targetX: number, targetY: number, aggroGate?: AggroGate): void {
     if (this.state === "dead") return;
     this.setDepth(DEPTH.ACTOR_SORT_BASE + this.y);
 
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer -= delta;
       if (this.hitFlashTimer <= 0) this.clearTint();
+    }
+
+    if (aggroGate) {
+      const dist = Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY);
+      const shouldChase = dist <= aggroGate.range && aggroGate.lightLevel >= AGGRO_LIGHT_THRESHOLD;
+      if (shouldChase) this.wake();
+      else this.calm();
     }
 
     if (this.state !== "aggressive") return;
