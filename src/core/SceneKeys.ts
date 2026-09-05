@@ -10,6 +10,7 @@ export const SceneKeys = {
   DAD_DRIVE: "DadDrive",
   COMBAT_TUTORIAL: "CombatTutorial",
   HOME_ARRIVAL: "HomeArrival",
+  BLACKOUT: "Blackout",
   HOUSE_DEFENSE: "HouseDefense",
 } as const;
 

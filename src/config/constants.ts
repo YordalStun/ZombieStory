@@ -49,6 +49,7 @@ export type Checkpoint =
   | "DAD_DRIVE"
   | "COMBAT_TUTORIAL"
   | "HOME_ARRIVAL"
+  | "BLACKOUT"
   | "HOUSE_DEFENSE";
 
 export const CHECKPOINTS: Record<Checkpoint, Checkpoint> = {
@@ -61,5 +62,6 @@ export const CHECKPOINTS: Record<Checkpoint, Checkpoint> = {
   DAD_DRIVE: "DAD_DRIVE",
   COMBAT_TUTORIAL: "COMBAT_TUTORIAL",
   HOME_ARRIVAL: "HOME_ARRIVAL",
+  BLACKOUT: "BLACKOUT",
   HOUSE_DEFENSE: "HOUSE_DEFENSE",
 };

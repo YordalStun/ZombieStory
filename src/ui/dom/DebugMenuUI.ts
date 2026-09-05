@@ -42,6 +42,7 @@ const TARGETS: JumpTarget[] = [
   { group: "Path 2 — Dad picks you up", label: "Dad's drive (crash)", go: (g) => jump(g, SceneKeys.DAD_DRIVE) },
   { group: "Path 2 — Dad picks you up", label: "Combat tutorial (garden)", go: (g) => withBat(g, SceneKeys.COMBAT_TUTORIAL, { variant: "garden" }) },
   { group: "Rejoined ending", label: "Home arrival (door zombie)", go: (g) => withBat(g, SceneKeys.HOME_ARRIVAL) },
+  { group: "Rejoined ending", label: "Blackout (power cut)", go: (g) => jump(g, SceneKeys.BLACKOUT) },
   { group: "Rejoined ending", label: "House defense (full chapter)", go: (g) => withBat(g, SceneKeys.HOUSE_DEFENSE) },
 ];
 

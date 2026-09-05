@@ -5,6 +5,7 @@ import "@/ui/dom/computer.css";
 import "@/ui/dom/weapon.css";
 import "@/ui/dom/debugmenu.css";
 import "@/ui/dom/brightness.css";
+import "@/ui/dom/phoneflash.css";
 import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { BootScene } from "@/scenes/BootScene";
 import { PreloadScene } from "@/scenes/PreloadScene";
@@ -17,6 +18,7 @@ import { ReturnDriveScene } from "@/scenes/ReturnDriveScene";
 import { DadDriveScene } from "@/scenes/DadDriveScene";
 import { CombatTutorialScene } from "@/scenes/CombatTutorialScene";
 import { HomeArrivalScene } from "@/scenes/HomeArrivalScene";
+import { BlackoutScene } from "@/scenes/BlackoutScene";
 import { HouseDefenseScene } from "@/scenes/HouseDefenseScene";
 import { initUIRoot, syncViewport } from "@/ui/dom/UIRoot";
 import { initDialogueBoxUI } from "@/ui/dom/DialogueBoxUI";
@@ -60,6 +62,7 @@ const config: Phaser.Types.Core.GameConfig = {
     DadDriveScene,
     CombatTutorialScene,
     HomeArrivalScene,
+    BlackoutScene,
     HouseDefenseScene,
   ],
 };

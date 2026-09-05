@@ -42,6 +42,9 @@ export const PropTex = {
   CROWBAR: "prop_crowbar",
   FRYING_PAN: "prop_frying_pan",
   FIRE_POKER: "prop_fire_poker",
+  POCKET_RADIO: "prop_pocket_radio",
+  WINDOW: "prop_window",
+  SOFA: "prop_sofa",
 } as const;
 
 // Display sizes, in px, at native (unscaled) resolution — used for physics
@@ -87,6 +90,9 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.CROWBAR]: { w: 20, h: 7 },
   [PropTex.FRYING_PAN]: { w: 18, h: 10 },
   [PropTex.FIRE_POKER]: { w: 22, h: 6 },
+  [PropTex.POCKET_RADIO]: { w: 12, h: 16 },
+  [PropTex.WINDOW]: { w: 52, h: 44 },
+  [PropTex.SOFA]: { w: 64, h: 28 },
 };
 
 function draw(
@@ -441,5 +447,41 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 0, h / 2 - 2, 5, 4, 0x1a1a1e); // handle grip
     rect(ctx, w - 3, h / 2 - 2, 3, 1, 0x1a1a1e); // hooked tip
     rect(ctx, w - 3, h / 2 - 2, 1, 3, 0x1a1a1e);
+  });
+
+  // stands upright, unlike the lying-flat weapons above — Dad holds and
+  // sets this one down rather than swinging it
+  draw(scene, PropTex.POCKET_RADIO, (ctx, w, h) => {
+    rect(ctx, w / 2 - 1, 0, 2, 5, 0x8a8a86); // antenna
+    rect(ctx, 0, 4, w, h - 4, 0x3a3a38); // body
+    outline(ctx, 0, 4, w, h - 4, 0x201f1e);
+    rect(ctx, 1, 6, w - 2, 5, 0x1a1a18); // speaker grille
+    rect(ctx, 2, 7, 1, 3, 0x0c0c0b);
+    rect(ctx, 4, 7, 1, 3, 0x0c0c0b);
+    rect(ctx, 6, 7, 1, 3, 0x0c0c0b);
+    rect(ctx, 8, 7, 1, 3, 0x0c0c0b);
+    rect(ctx, w - 4, h - 5, 3, 3, 0xc9a56a); // tuning dial
+  });
+
+  // free-standing window prop (distinct from the wall tileset's built-in
+  // window tile) — used for cutscene backdrops composed from props rather
+  // than a full tilemap, so it needs its own frame/sill and can sit flush
+  // against a plain wall rectangle
+  draw(scene, PropTex.WINDOW, (ctx, w, h) => {
+    rect(ctx, 0, 0, w, h - 4, 0x2a2018); // frame
+    rect(ctx, 3, 3, w - 6, h - 10, 0x0a0a14); // dark glass — nothing to see, power's already flickering out beyond it
+    rect(ctx, 3, 3, w - 6, 5, 0x1c1c2c); // faint interior reflection along the top pane
+    rect(ctx, w / 2 - 1, 3, 2, h - 10, 0x2a2018); // mullion cross
+    rect(ctx, 3, h / 2 - 5, w - 6, 2, 0x2a2018);
+    rect(ctx, -2, h - 4, w + 4, 4, 0x3a2c1e); // sill
+  });
+
+  draw(scene, PropTex.SOFA, (ctx, w, h) => {
+    rect(ctx, 0, 6, w, h - 6, 0x445a52); // base
+    outline(ctx, 0, 6, w, h - 6, 0x2c3c38);
+    rect(ctx, 0, 0, 8, h, 0x3c504a); // left arm
+    rect(ctx, w - 8, 0, 8, h, 0x3c504a); // right arm
+    rect(ctx, 10, 4, w / 2 - 12, 10, 0x4e685f); // cushion seams
+    rect(ctx, w / 2 + 2, 4, w / 2 - 12, 10, 0x4e685f);
   });
 }

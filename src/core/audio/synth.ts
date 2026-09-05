@@ -409,6 +409,51 @@ export function synthRain(
   });
 }
 
+/** A radio scanning for signal — bandpassed hiss, brighter and jitterier than rain/wind's slow weather-gusts, with scattered sharp crackle pops. Loops via AudioManager.startLoop like the ambience beds. */
+export function synthRadioStatic(duration = 6): Promise<AudioBuffer> {
+  return render(duration, (ctx) => {
+    const src = ctx.createBufferSource();
+    src.buffer = whiteNoiseBuffer(ctx, duration);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(2200, 0);
+    filter.Q.setValueAtTime(0.7, 0);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.12, 0);
+
+    // fast, irregular amplitude jitter — hiss that never settles, unlike a weather bed's slow gusts
+    const lfo = ctx.createOscillator();
+    lfo.type = "square";
+    lfo.frequency.setValueAtTime(7, 0);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(0.05, 0);
+    lfo.connect(lfoGain).connect(gain.gain);
+    lfo.start(0);
+    lfo.stop(duration);
+
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(0);
+
+    // sharper crackle pops, scattered unevenly through the loop
+    const popCount = Math.max(3, Math.floor(duration * 1.5));
+    for (let i = 0; i < popCount; i++) {
+      const t = Math.random() * duration;
+      const pop = ctx.createBufferSource();
+      pop.buffer = whiteNoiseBuffer(ctx, 0.03);
+      const popFilter = ctx.createBiquadFilter();
+      popFilter.type = "highpass";
+      popFilter.frequency.setValueAtTime(3000, 0);
+      const popGain = ctx.createGain();
+      popGain.gain.setValueAtTime(0.0001, 0);
+      popGain.gain.setValueAtTime(0.0001, t);
+      popGain.gain.exponentialRampToValueAtTime(0.3, t + 0.005);
+      popGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      pop.connect(popFilter).connect(popGain).connect(ctx.destination);
+      pop.start(t);
+    }
+  });
+}
+
 export function synthWind(duration = 6): Promise<AudioBuffer> {
   return render(duration, (ctx) => {
     const src = ctx.createBufferSource();

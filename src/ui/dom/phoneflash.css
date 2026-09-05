@@ -1,0 +1,125 @@
+/* ---------- phone flash (Jack's one bar of signal) ---------- */
+
+#phone-flash-layer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#phone-flash-layer.hidden {
+  display: none;
+}
+
+.phone-flash-panel {
+  width: clamp(220px, 26vw, 320px);
+  max-height: 60vh;
+  background: rgba(8, 8, 12, 0.92);
+  border: 2px solid rgba(240, 236, 226, 0.4);
+  border-radius: 10px;
+  padding: 10px 14px 14px;
+  font-family: "VT323", monospace;
+  color: #f0ece2;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+}
+
+.phone-flash-panel.fade-out {
+  opacity: 0;
+  transition: opacity 500ms ease-out;
+}
+
+.phone-flash-panel.buzzing {
+  animation: phone-flash-buzz 140ms infinite;
+}
+
+@keyframes phone-flash-buzz {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(1px, -1px); }
+  50% { transform: translate(-1px, 1px); }
+  75% { transform: translate(1px, 1px); }
+}
+
+.phone-flash-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(10px, 0.85vw, 12px);
+  color: #ffd15c;
+  border-bottom: 1px solid rgba(240, 236, 226, 0.25);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.phone-flash-signal {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.phone-flash-bar {
+  width: 3px;
+  background: rgba(240, 236, 226, 0.25);
+  display: inline-block;
+}
+
+.phone-flash-bar:nth-child(1) { height: 4px; }
+.phone-flash-bar:nth-child(2) { height: 6px; }
+.phone-flash-bar:nth-child(3) { height: 9px; }
+.phone-flash-bar:nth-child(4) { height: 12px; }
+
+.phone-flash-bar.lit {
+  background: #6fd67a;
+}
+
+.phone-flash-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 34vh;
+  overflow: hidden;
+}
+
+.phone-flash-message {
+  background: rgba(240, 236, 226, 0.06);
+  border: 1px solid rgba(240, 236, 226, 0.18);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: clamp(12px, 1vw, 15px);
+  line-height: 1.3;
+  transition:
+    transform 220ms ease-out,
+    opacity 220ms ease-out;
+}
+
+.phone-flash-message.entering {
+  transform: translateY(-8px);
+  opacity: 0;
+}
+
+.phone-flash-sender {
+  display: block;
+  color: #ffd15c;
+  font-size: clamp(11px, 0.9vw, 13px);
+}
+
+.phone-flash-text {
+  color: #cfcabd;
+}
+
+.phone-flash-status {
+  margin-top: 8px;
+  text-align: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(10px, 0.85vw, 12px);
+  color: #8a8578;
+  letter-spacing: 0.05em;
+}
+
+.phone-flash-status.hidden {
+  display: none;
+}

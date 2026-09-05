@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "phaser": "^3.80.1"
+    "@types/three": "^0.185.4",
+    "phaser": "^3.80.1",
+    "three": "^0.185.1"
   },
   "devDependencies": {
     "typescript": "^5.5.4",

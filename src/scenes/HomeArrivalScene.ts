@@ -284,7 +284,7 @@ export class HomeArrivalScene extends Phaser.Scene {
 
     await fadeOut(1400);
     SaveManager.saveCheckpoint("HOME_ARRIVAL");
-    this.scene.start(SceneKeys.HOUSE_DEFENSE);
+    this.scene.start(SceneKeys.BLACKOUT);
   }
 
   private say(script: DialogueScript): Promise<void> {
