@@ -20,6 +20,7 @@ import {
 } from "@/data/dialogue/returnDriveLines";
 import { setHudVisible } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
+import { createBootCutscene } from "@/gfx3d/bootCutscene";
 
 const ROAD_X = GAME_WIDTH / 2;
 const CAR_Y = 190;
@@ -417,15 +418,16 @@ export class ReturnDriveScene extends Phaser.Scene {
     await this.fadeTo(dirt, 0, 400);
     dirt.destroy();
 
-    const boot = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, PovTex.BOOT).setScrollFactor(0).setDepth(CUTSCENE_DEPTH).setAlpha(0);
     AudioManager.playSfx(SfxKey.DOOR, { volume: 0.5 });
-    await this.fadeTo(boot, 1, 500);
-    await this.wait(500);
+    await fadeOut(500);
+    const bootCutscene = createBootCutscene();
+    await fadeIn(500);
+    await this.wait(700);
     await this.say(GET_BAT_LINES);
     AudioManager.playSfx(SfxKey.SWING, { volume: 0.4 });
-    await this.wait(300);
-    await this.fadeTo(boot, 0, 500);
-    boot.destroy();
+    await this.wait(500);
+    await fadeOut(500);
+    bootCutscene.dispose();
 
     WeaponManager.pickUp("cricket_bat");
 

@@ -5,7 +5,7 @@ import { TILESET_KEY, WALL_TILE_INDICES } from "@/gfx/tileset";
 import { OfficeTex } from "@/gfx/office";
 import { CoworkerTex } from "@/gfx/coworkerFigure";
 import { PropTex } from "@/gfx/props";
-import { CitySunsetTex } from "@/gfx/citySunset";
+import { createCitySunset3D } from "@/gfx3d/citySunset3d";
 import { buildOfficeLevel, type OfficeLevel, type CoworkerSpec } from "@/data/levels/officeLevel";
 import type { PropSpec } from "@/data/levels/apartmentLevel";
 import { Player, type MoveInput } from "@/core/entities/Player";
@@ -744,28 +744,20 @@ export class OfficeScene extends Phaser.Scene {
 
   /**
    * Path 2 only, right before the office fades out for the day: a hard cut
-   * away to a high-up view across the city, a timelapse sunset, then a hard
-   * cut back to the office — now visibly dimmer, evening having fallen
-   * while we were looking away — before the scene's own fade-to-black runs.
-   * Hard cuts (set alpha straight to 1, then destroy) bookend the beat;
-   * only the sky-to-sky progression itself crossfades, since that's the
-   * one part that's actually meant to read as time passing smoothly.
+   * away to a real 3D rooftop view across the city — the sun actually
+   * arcing down and setting, windows lighting up one by one as it darkens
+   * — then a hard cut back to the office, now visibly dimmer, evening
+   * having fallen while we were looking away. Same self-mounting Three.js
+   * overlay pattern as the Blackout scene's street cutscene; see
+   * gfx3d/citySunset3d.ts for the timelapse itself.
    */
   private async citySunsetCutscene(): Promise<void> {
-    const frames = [CitySunsetTex.DAY, CitySunsetTex.GOLDEN, CitySunsetTex.SUNSET, CitySunsetTex.DUSK, CitySunsetTex.NIGHT];
-    const images = frames.map((tex) =>
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, tex).setScrollFactor(0).setDepth(200000).setAlpha(0),
-    );
-    images[0].setAlpha(1);
-
-    await this.wait(600);
-    for (let i = 1; i < images.length; i++) {
-      await new Promise<void>((resolve) => {
-        this.tweens.add({ targets: images[i], alpha: 1, duration: 1000, onComplete: () => resolve() });
-      });
-      await this.wait(450);
-    }
-    await this.wait(500);
+    await fadeOut(700);
+    const cutscene = createCitySunset3D();
+    await fadeIn(700);
+    await this.wait(8600);
+    await fadeOut(700);
+    cutscene.dispose();
 
     // ambient COLOR (not just the level float, which only drives the HUD
     // reading) is what actually controls rendered brightness — see
@@ -774,7 +766,7 @@ export class OfficeScene extends Phaser.Scene {
     // officeLevel.ts) are what's supposed to be doing the work of keeping
     // it lit indoors, this is just "sun's down outside" dimming the base.
     this.lighting.setAmbient(0x767c8c, 0.42);
-    images.forEach((img) => img.destroy());
+    await fadeIn(700);
   }
 
   private async handleExit(): Promise<void> {
