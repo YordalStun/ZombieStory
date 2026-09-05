@@ -2,7 +2,6 @@ import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import type { PhoneMessage } from "@/data/dialogue/blackoutLines";
 
 const MESSAGE_INTERVAL_MS = 340;
-const READ_HOLD_MS = 1300;
 const NO_SERVICE_HOLD_MS = 750;
 const FADE_MS = 500;
 
@@ -23,6 +22,7 @@ function build(): HTMLDivElement {
       </div>
       <div class="phone-flash-messages"></div>
       <div class="phone-flash-status hidden">NO SERVICE</div>
+      <div class="phone-flash-continue hidden">Press SPACE or click to continue</div>
     </div>
   `;
   document.body.appendChild(el);
@@ -31,6 +31,22 @@ function build(): HTMLDivElement {
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+/** Same "click or Space" input the dialogue box itself accepts — reads the messages for as long as the player wants, no fixed timer guessing at reading speed. */
+function waitForContinue(): Promise<void> {
+  return new Promise((resolve) => {
+    const finish = () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("click", finish);
+      resolve();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.code === "Enter") finish();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("click", finish);
+  });
 }
 
 /**
@@ -45,9 +61,11 @@ export async function playPhoneFlash(messages: PhoneMessage[]): Promise<void> {
   const bars = layer.querySelectorAll<HTMLSpanElement>(".phone-flash-bar");
   const list = layer.querySelector<HTMLDivElement>(".phone-flash-messages")!;
   const status = layer.querySelector<HTMLDivElement>(".phone-flash-status")!;
+  const continueHint = layer.querySelector<HTMLDivElement>(".phone-flash-continue")!;
 
   list.innerHTML = "";
   status.classList.add("hidden");
+  continueHint.classList.add("hidden");
   bars.forEach((bar, i) => bar.classList.toggle("lit", i === 0));
   panel.classList.remove("fade-out");
   panel.classList.add("buzzing");
@@ -64,9 +82,11 @@ export async function playPhoneFlash(messages: PhoneMessage[]): Promise<void> {
     await wait(MESSAGE_INTERVAL_MS);
   }
 
-  await wait(READ_HOLD_MS);
-
   panel.classList.remove("buzzing");
+  continueHint.classList.remove("hidden");
+  await waitForContinue();
+  continueHint.classList.add("hidden");
+
   bars.forEach((bar) => bar.classList.remove("lit"));
   status.classList.remove("hidden");
   await wait(NO_SERVICE_HOLD_MS);

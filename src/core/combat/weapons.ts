@@ -1,3 +1,11 @@
+/**
+ * "sweep" swings through the arc side to side (the classic bat/pan motion).
+ * "thrust" lunges straight forward along facing and pulls back — a stab,
+ * not a swing, for anything blade- or point-first. "chop" raises up and
+ * over before coming down hard — slower to start, heaviest to land.
+ */
+export type AttackStyle = "sweep" | "thrust" | "chop";
+
 export interface WeaponDef {
   id: string;
   name: string;
@@ -8,6 +16,7 @@ export interface WeaponDef {
   /** Width of the swing arc, in degrees. */
   arcDegrees: number;
   swingMs: number;
+  attackStyle: AttackStyle;
 }
 
 export const WEAPONS: Record<string, WeaponDef> = {
@@ -19,6 +28,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     range: 28,
     arcDegrees: 120,
     swingMs: 300,
+    attackStyle: "sweep",
   },
   knife: {
     id: "knife",
@@ -28,6 +38,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     range: 20,
     arcDegrees: 80,
     swingMs: 180,
+    attackStyle: "thrust",
   },
   crowbar: {
     id: "crowbar",
@@ -37,6 +48,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     range: 26,
     arcDegrees: 100,
     swingMs: 420,
+    attackStyle: "chop",
   },
   frying_pan: {
     id: "frying_pan",
@@ -46,6 +58,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     range: 24,
     arcDegrees: 150,
     swingMs: 340,
+    attackStyle: "sweep",
   },
   fire_poker: {
     id: "fire_poker",
@@ -55,5 +68,6 @@ export const WEAPONS: Record<string, WeaponDef> = {
     range: 34,
     arcDegrees: 90,
     swingMs: 380,
+    attackStyle: "thrust",
   },
 };

@@ -11,8 +11,8 @@ import * as THREE from "three";
  * procedural-only-assets convention everywhere else in this codebase.
  */
 
-const RENDER_W = 160;
-const RENDER_H = 90;
+const RENDER_W = 320;
+const RENDER_H = 180;
 const ZOOM_DURATION_SEC = 7;
 
 export interface StreetCutsceneHandle {
@@ -120,7 +120,7 @@ function buildLamp(scene: THREE.Scene, x: number, z: number, lit: boolean): THRE
   head.position.set(x, 3.25, z);
   scene.add(head);
   if (!lit) return null;
-  const light = new THREE.PointLight(0xffdca0, 1.1, 9, 2);
+  const light = new THREE.PointLight(0xffdca0, 2.2, 13, 2);
   light.position.set(x, 3.1, z);
   scene.add(light);
   return light;
@@ -175,7 +175,7 @@ export function createStreetCutscene(): StreetCutsceneHandle {
   renderer.setClearColor(0x0a0e18, 1);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0e18, 0.024);
+  scene.fog = new THREE.FogExp2(0x10131f, 0.017);
 
   const camera = new THREE.PerspectiveCamera(52, RENDER_W / RENDER_H, 0.1, 80);
   const zStart = 7;
@@ -186,12 +186,14 @@ export function createStreetCutscene(): StreetCutsceneHandle {
   // "dim" needs to mean "visible but moody", not "black" — task-list history
   // has this exact lesson already for the 2D night exteriors (see
   // "Raise night-exterior ambient light so it's playable outside light
-  // pools"). Ambient/hemisphere alone still reads flat, so a weak angled
-  // "moonlight" directional is what actually gives the zombies and pole
-  // real shape instead of silhouette mush.
-  scene.add(new THREE.AmbientLight(0x2c3550, 2.6));
-  scene.add(new THREE.HemisphereLight(0x2a3550, 0x0a0a12, 1.3));
-  const moon = new THREE.DirectionalLight(0x9fb0d8, 1.1);
+  // pools"), and this 3D shot needed a second pass of the same fix — the
+  // first brightening pass still read as too dark/too pixelated to make
+  // out the zombies. Ambient/hemisphere alone still reads flat, so a weak
+  // angled "moonlight" directional is what actually gives the zombies and
+  // pole real shape instead of silhouette mush.
+  scene.add(new THREE.AmbientLight(0x3a4568, 3.6));
+  scene.add(new THREE.HemisphereLight(0x3a4568, 0x12121a, 1.9));
+  const moon = new THREE.DirectionalLight(0xb8c4e0, 1.5);
   moon.position.set(-4, 10, 6);
   scene.add(moon);
 
@@ -245,9 +247,9 @@ export function createStreetCutscene(): StreetCutsceneHandle {
   }
 
   const lampLights: THREE.PointLight[] = [];
-  for (let i = 0; i < 4; i++) {
-    const z = -4 - i * 9;
-    const lit = i === 2; // one survivor, well past the downed pole — contrast, not comfort
+  for (let i = 0; i < 6; i++) {
+    const z = -4 - i * 7;
+    const lit = i !== 1 && i !== 4; // most of the street still has power — just not right where the pole came down
     const light = buildLamp(scene, i % 2 === 0 ? -3.6 : 3.6, z, lit);
     if (light) lampLights.push(light);
   }
@@ -305,7 +307,7 @@ export function createStreetCutscene(): StreetCutsceneHandle {
       z.group.rotation.y = z.baseRotY + Math.sin(elapsed * z.swaySpeed + z.swayPhase) * 0.025;
     }
     for (const lamp of lampLights) {
-      lamp.intensity = 1.0 + Math.sin(elapsed * 3 + lamp.position.x) * 0.08;
+      lamp.intensity = 2.1 + Math.sin(elapsed * 3 + lamp.position.x) * 0.15;
     }
 
     renderer.render(scene, camera);

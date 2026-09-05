@@ -123,3 +123,20 @@
 .phone-flash-status.hidden {
   display: none;
 }
+
+.phone-flash-continue {
+  margin-top: 8px;
+  text-align: center;
+  font-size: clamp(11px, 0.9vw, 14px);
+  color: #ffd15c;
+  animation: phone-flash-continue-pulse 1s infinite;
+}
+
+.phone-flash-continue.hidden {
+  display: none;
+}
+
+@keyframes phone-flash-continue-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}

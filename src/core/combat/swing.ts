@@ -7,6 +7,14 @@ import { PropTex } from "@/gfx/props";
 import { spawnImpactBurst } from "@/core/combat/impactFx";
 
 const FACING_ANGLE_DEG: Record<string, number> = { right: 0, down: 90, left: 180, up: 270 };
+const FACING_VECTOR: Record<string, { x: number; y: number }> = {
+  right: { x: 1, y: 0 },
+  left: { x: -1, y: 0 },
+  down: { x: 0, y: 1 },
+  up: { x: 0, y: -1 },
+};
+/** How far a thrust lunges forward, in world px, at full extension. */
+const LUNGE_DISTANCE = 8;
 
 /** Every pickup icon is drawn lying flat/horizontal, handle at the left edge (see props.ts) — reused as-is for the held/swung sprite, no separate art needed. */
 const WEAPON_HELD_TEX: Record<string, string> = {
@@ -47,6 +55,17 @@ function angleDiffDeg(a: number, b: number): number {
 const lastSwingAt = new WeakMap<Player, number>();
 const heldSprites = new WeakMap<Player, Phaser.GameObjects.Image>();
 const swingTweens = new WeakMap<Player, Phaser.Tweens.Tween>();
+/** Live-mutated by an in-progress thrust tween; read every frame in positionHeldSprite so the lunge shows up while it's happening, not just at the angle. */
+const lungeState = new WeakMap<Player, { amount: number }>();
+
+function getLunge(player: Player): { amount: number } {
+  let s = lungeState.get(player);
+  if (!s) {
+    s = { amount: 0 };
+    lungeState.set(player, s);
+  }
+  return s;
+}
 
 function getHeldSprite(scene: Phaser.Scene, player: Player, texKey: string): Phaser.GameObjects.Image {
   let sprite = heldSprites.get(player);
@@ -62,7 +81,9 @@ function getHeldSprite(scene: Phaser.Scene, player: Player, texKey: string): Pha
 
 function positionHeldSprite(sprite: Phaser.GameObjects.Image, player: Player): void {
   const offset = HELD_OFFSET[player.facing];
-  sprite.setPosition(player.x + offset.x, player.y + offset.y);
+  const dir = FACING_VECTOR[player.facing];
+  const lunge = lungeState.get(player)?.amount ?? 0;
+  sprite.setPosition(player.x + offset.x + dir.x * lunge, player.y + offset.y + dir.y * lunge);
   sprite.setDepth(player.depth + 1);
   sprite.setFlipY(player.facing === "left" || player.facing === "up");
 }
@@ -70,10 +91,11 @@ function positionHeldSprite(sprite: Phaser.GameObjects.Image, player: Player): v
 /**
  * Keeps Danny visibly holding whatever's equipped, resting near his hand.
  * Call once a frame from any scene that lets him fight. Position tracks the
- * player every single frame, swing or not — only the ANGLE is ever handed
- * off to swingWeapon()'s tween (see swingTweens below), so the weapon can
- * never get left behind mid-attack the way it did when position was only
- * ever set once, at the start of a swing.
+ * player every single frame, swing or not — swingWeapon()'s tween only ever
+ * owns the ANGLE (sweep/chop) or the lunge amount read back in here via
+ * positionHeldSprite (thrust) — see swingTweens/lungeState below — so the
+ * weapon can never get left behind mid-attack the way it did when position
+ * was only ever set once, at the start of a swing.
  */
 export function updateHeldWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponDef | null): void {
   if (!weapon) {
@@ -106,9 +128,10 @@ export function updateHeldWeapon(scene: Phaser.Scene, player: Player, weapon: We
  * Gated by the weapon's own swingMs as a cooldown: without it, mashing the
  * key landed several hits a second no matter what the weapon's stats said.
  * A swing simply can't start again until the previous one's animation would
- * have finished, and since arcDegrees/swingMs already differ per weapon
- * (see weapons.ts), that alone makes each one feel and read distinctly
- * different — no separate per-weapon animation code needed.
+ * have finished. arcDegrees/swingMs differing per weapon (see weapons.ts)
+ * already made each feel a little different; attackStyle goes further —
+ * a thrust genuinely moves through space differently from a chop, not just
+ * a faster or narrower version of the same sweep.
  */
 export function swingWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponDef, zombies: Zombie[]): void {
   const now = scene.time.now;
@@ -144,18 +167,52 @@ export function swingWeapon(scene: Phaser.Scene, player: Player, weapon: WeaponD
     const sprite = getHeldSprite(scene, player, texKey);
     if (sprite.texture.key !== texKey) sprite.setTexture(texKey);
     sprite.setVisible(true);
-    positionHeldSprite(sprite, player);
-    sprite.setAngle(facingDeg - weapon.arcDegrees / 2);
 
     swingTweens.get(player)?.stop();
-    const tween = scene.tweens.add({
-      targets: sprite,
-      angle: facingDeg + weapon.arcDegrees / 2,
-      duration: weapon.swingMs,
-      ease: "Back.Out",
-      onComplete: () => swingTweens.delete(player),
-    });
-    swingTweens.set(player, tween);
+    const lunge = getLunge(player);
+    lunge.amount = 0; // a swing cut short mid-thrust must not leave the weapon stuck lunged forever
+
+    if (weapon.attackStyle === "thrust") {
+      // point straight down facing and lunge the whole sprite forward and
+      // back — a stab, not a sweep, so it needs to move through POSITION
+      // rather than angle (see positionHeldSprite's lunge read-back)
+      sprite.setAngle(facingDeg);
+      positionHeldSprite(sprite, player);
+      const tween = scene.tweens.add({
+        targets: lunge,
+        amount: LUNGE_DISTANCE,
+        duration: weapon.swingMs * 0.4,
+        ease: "Cubic.easeOut",
+        yoyo: true,
+        hold: weapon.swingMs * 0.15,
+        onComplete: () => swingTweens.delete(player),
+      });
+      swingTweens.set(player, tween);
+    } else if (weapon.attackStyle === "chop") {
+      // wound up further back than a sweep's own start, then commits down
+      // and through — slow to leave, fast to land, reads as heavier
+      sprite.setAngle(facingDeg - weapon.arcDegrees * 0.9);
+      positionHeldSprite(sprite, player);
+      const tween = scene.tweens.add({
+        targets: sprite,
+        angle: facingDeg + weapon.arcDegrees * 0.3,
+        duration: weapon.swingMs,
+        ease: "Cubic.easeIn",
+        onComplete: () => swingTweens.delete(player),
+      });
+      swingTweens.set(player, tween);
+    } else {
+      sprite.setAngle(facingDeg - weapon.arcDegrees / 2);
+      positionHeldSprite(sprite, player);
+      const tween = scene.tweens.add({
+        targets: sprite,
+        angle: facingDeg + weapon.arcDegrees / 2,
+        duration: weapon.swingMs,
+        ease: "Back.Out",
+        onComplete: () => swingTweens.delete(player),
+      });
+      swingTweens.set(player, tween);
+    }
   }
 
   let hitAny = false;
