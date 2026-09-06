@@ -21,6 +21,7 @@ import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
 import { WEAPONS } from "@/core/combat/weapons";
+import { announceWeaponPickup } from "@/ui/dom/WeaponPickupUI";
 import { PlayerHealth } from "@/core/managers/PlayerHealth";
 import { swingWeapon, updateHeldWeapon } from "@/core/combat/swing";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
@@ -722,10 +723,10 @@ export class HouseDefenseScene extends Phaser.Scene {
       await this.playLinesBlocking(line);
       return;
     }
-    if (id?.startsWith("pickup_")) this.pickUpWeapon(id);
+    if (id?.startsWith("pickup_")) void this.pickUpWeapon(id);
   }
 
-  private pickUpWeapon(id: string): void {
+  private async pickUpWeapon(id: string): Promise<void> {
     const entry = this.propsById.get(id);
     if (!entry) return;
     const weaponId = id.slice("pickup_".length);
@@ -751,6 +752,19 @@ export class HouseDefenseScene extends Phaser.Scene {
           interactable: { prompt: `Take ${WEAPONS[dropped]?.name ?? "weapon"}`, range: 20 },
         });
       }
+    }
+
+    // A no-op past the very first time each weapon's ever been picked up
+    // (see announceWeaponPickup) — but that first time, this genuinely
+    // pauses the fight: busy=true holds off zombies/spawning/attacks the
+    // same way it does before the opening beat, not just player input.
+    const weapon = WEAPONS[weaponId];
+    if (weapon) {
+      this.busy = true;
+      this.player.setControlsEnabled(false);
+      await announceWeaponPickup(weapon);
+      this.player.setControlsEnabled(true);
+      this.busy = false;
     }
   }
 

@@ -42,6 +42,14 @@ export function initUIRoot(): HTMLDivElement {
       <div id="dialogue-text"></div>
       <div id="dialogue-continue" class="hidden">&#9660;</div>
     </div>
+    <div id="weapon-pickup-layer" class="hidden">
+      <div class="weapon-pickup-card">
+        <div class="weapon-pickup-label">Weapon acquired</div>
+        <div id="weapon-pickup-name" class="weapon-pickup-name"></div>
+        <div id="weapon-pickup-desc" class="weapon-pickup-desc"></div>
+        <div class="weapon-pickup-continue">Press SPACE or click to continue</div>
+      </div>
+    </div>
     <div id="menu-layer" class="hidden"></div>
     <div id="fade-layer"></div>
     <div id="computer-overlay" class="hidden">

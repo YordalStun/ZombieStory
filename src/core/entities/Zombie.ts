@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { FigureTex } from "@/gfx/zombieFigure";
+import { ZOMBIE_VARIANTS } from "@/gfx/zombieFigure";
 import { DEPTH } from "@/config/constants";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 
@@ -57,7 +57,10 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   private onBreachComplete?: () => void;
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: ZombieOptions = {}) {
-    super(scene, x, y, FigureTex.ZOMBIE);
+    // A mix of builds/genders rather than one model repeated — matters
+    // most here since House Defense throws several of these on screen
+    // together, where a single reused texture is most obvious.
+    super(scene, x, y, ZOMBIE_VARIANTS[Math.floor(Math.random() * ZOMBIE_VARIANTS.length)]);
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setOrigin(0.5, 0.85);

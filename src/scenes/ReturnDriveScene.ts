@@ -2,12 +2,14 @@ import Phaser from "phaser";
 import { SceneKeys } from "@/core/SceneKeys";
 import { GAME_WIDTH, GAME_HEIGHT } from "@/config/constants";
 import { PropTex } from "@/gfx/props";
-import { FigureTex } from "@/gfx/zombieFigure";
+import { FigureTex, ZOMBIE_VARIANTS } from "@/gfx/zombieFigure";
 import { ReturnDriveTex, ROAD_TILE_SIZE } from "@/gfx/returnDrive";
 import { PovTex } from "@/gfx/returnDrivePov";
 import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
+import { WEAPONS } from "@/core/combat/weapons";
+import { announceWeaponPickup } from "@/ui/dom/WeaponPickupUI";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
@@ -133,7 +135,7 @@ function buildDecorPlan(): DecorPlanEntry[] {
     plan.push({
       distance: d,
       x: ROAD_X + side * (ROAD_EDGE + 35 + rng() * 50),
-      tex: FigureTex.ZOMBIE,
+      tex: ZOMBIE_VARIANTS[i % ZOMBIE_VARIANTS.length],
       scale: 0.7,
       idleSway: true,
     });
@@ -292,7 +294,9 @@ export class ReturnDriveScene extends Phaser.Scene {
     if (this.zombieGroanTimer > 0) return;
     this.zombieGroanTimer = 3200 + Math.random() * 2600;
 
-    const visible = this.decor.some((d) => d.tex === FigureTex.ZOMBIE && !d.resolved && d.img && d.img.y > -40 && d.img.y < GAME_HEIGHT + 40);
+    const visible = this.decor.some(
+      (d) => (ZOMBIE_VARIANTS as readonly string[]).includes(d.tex) && !d.resolved && d.img && d.img.y > -40 && d.img.y < GAME_HEIGHT + 40,
+    );
     if (visible) AudioManager.playSfx(SfxKey.GROAN, { volume: 0.22, rate: 0.8 + Math.random() * 0.3 });
   }
 
@@ -305,7 +309,8 @@ export class ReturnDriveScene extends Phaser.Scene {
       if (y < -40) continue;
 
       if (!ob.img) {
-        const img = this.add.image(ob.laneX, y, ob.isZombie ? FigureTex.ZOMBIE : PropTex.CAR).setDepth(4);
+        const zombieTex = ZOMBIE_VARIANTS[Math.floor(Math.random() * ZOMBIE_VARIANTS.length)];
+        const img = this.add.image(ob.laneX, y, ob.isZombie ? zombieTex : PropTex.CAR).setDepth(4);
         if (ob.isZombie) {
           img.setScale(0.8);
         } else {
@@ -469,6 +474,7 @@ export class ReturnDriveScene extends Phaser.Scene {
     bootCutscene.dispose();
 
     WeaponManager.pickUp("cricket_bat");
+    await announceWeaponPickup(WEAPONS.cricket_bat);
 
     await fadeOut(1000);
     SaveManager.saveCheckpoint("RETURN_DRIVE");

@@ -14,6 +14,8 @@ import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
+import { WEAPONS } from "@/core/combat/weapons";
+import { announceWeaponPickup } from "@/ui/dom/WeaponPickupUI";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
 import {
@@ -727,6 +729,7 @@ export class OfficeScene extends Phaser.Scene {
       await this.throwBatVisual(dana.sprite.x, dana.sprite.y, this.player.x, this.player.y);
     }
     WeaponManager.pickUp("cricket_bat");
+    await announceWeaponPickup(WEAPONS.cricket_bat);
 
     await DialoguePlayer.play(DANA_BAT_LINES);
     await this.wait(200);
