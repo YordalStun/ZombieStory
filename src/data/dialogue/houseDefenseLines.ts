@@ -30,6 +30,19 @@ export const HOUSE_DEFENSE_WIN_LINES: DialogueScript = [
   { speaker: PLAYER_NAME, text: "For tonight. Everyone's still here. That's the only number that matters." },
 ];
 
+/** Jack stayed up by his window when everyone else went dark — he never came back down during the blackout scene (see blackoutLines.ts's BLACKOUT_JACK_CHASE_LINES). Asking him during the fight gets one of these at random. */
+export const JACK_ASK_SIGNAL_LINES: DialogueScript[] = [
+  [{ speaker: "Jack", text: "Nothing. Still nothing." }],
+  [{ speaker: "Jack", text: "One bar, then gone again. It's not staying up long enough to send anything." }],
+  [{ speaker: "Jack", text: "I keep checking. I know. I can't not check." }],
+];
+
+/** Plays once the fight's actually over, before the win slate — Jack finally comes back down. */
+export const JACK_POST_DEFENSE_RETURN_LINES: DialogueScript = [
+  { speaker: "Jack", text: "Nothing. It's not coming back tonight." },
+  { speaker: "Mum", text: "You did what you could. Come here." },
+];
+
 export const FAMILY_MEMBER_NAMES: Record<string, string> = {
   mum: "Mum",
   dad: "Dad",

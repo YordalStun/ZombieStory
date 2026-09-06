@@ -26,13 +26,12 @@ export const BLACKOUT_TO_WINDOW_LINES: DialogueScript = [
 export const BLACKOUT_WINDOW_REACTION_LINES: DialogueScript = [
   { speaker: "Mum", text: "Get back from the glass. Both of you." },
   { speaker: "Jack", text: "Is that— are those all—" },
-  { speaker: "Dad", text: "The Hendersons' lamppost. That's the Hendersons' lamppost." },
+  { speaker: "Dad", text: "That's the corner by the postbox. That's not even fifty yards from this door." },
   { speaker: PLAYER_NAME, text: "Dad." },
-  { speaker: "Dad", text: "Sorry. Sorry. I'm — sorry." },
+  { speaker: "Dad", text: "Sorry. Sorry." },
   { speaker: "Mum", text: "We saw. We don't need to keep watching." },
   { speaker: "Lily", text: "There were so many of them just... standing there." },
-  { speaker: "Jack", text: "Standing where we used to—" },
-  { speaker: "Jack", text: "Never mind." },
+  { speaker: "Jack", text: "That's the bus stop. I stand right there every morning." },
 ];
 
 export const BLACKOUT_RADIO_START_LINES: DialogueScript = [
@@ -73,15 +72,11 @@ export const BLACKOUT_JACK_SIGNAL_LOST_LINES: DialogueScript = [
   { speaker: "Jack", text: "Nobody knows anything either." },
 ];
 
+/** Jack doesn't come back after this — he stays up by the window for the rest of the blackout, and the house-defense fight starts without him. See houseDefenseLines.ts for his "ask him about signal" line and his eventual return, after the fight's over. */
 export const BLACKOUT_JACK_CHASE_LINES: DialogueScript = [
-  { speaker: "Jack", text: "If it came back once, it'll come back again — I'm going to try the landing." },
+  { speaker: "Jack", text: "If it came back once, it'll come back again — I'm staying by that window." },
   { speaker: "Mum", text: "Jack—" },
-  { speaker: "Jack", text: "Two minutes. I just want to reply to one of them." },
-];
-
-export const BLACKOUT_JACK_RETURN_LINES: DialogueScript = [
-  { speaker: "Jack", text: "Nothing. It's not coming back." },
-  { speaker: "Mum", text: "Then you're not leaving this room again. Sit." },
+  { speaker: "Jack", text: "I'm not going far. Just there. I'll shout if I get anything." },
 ];
 
 export const BLACKOUT_PLANNING_LINES: DialogueScript = [

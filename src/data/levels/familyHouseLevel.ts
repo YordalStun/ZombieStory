@@ -169,6 +169,8 @@ export interface FloorLevel {
   stairsAt: { x: number; y: number };
   entryAt: { x: number; y: number };
   ambientLevel: number;
+  /** Upper floor only — where Jack's standing, watching his phone by the window, for the whole house-defense fight. */
+  jackSpot?: { x: number; y: number };
 }
 
 const GROUND_W = 34;
@@ -426,5 +428,6 @@ export function buildFamilyHouseUpperFloor(): FloorLevel {
     stairsAt: stairs,
     entryAt: stairs,
     ambientLevel: 0.15,
+    jackSpot: tileCenter(BED_B.x + BED_B.w - 2, BED_B.y + 3),
   };
 }

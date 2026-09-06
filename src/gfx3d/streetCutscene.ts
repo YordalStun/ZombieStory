@@ -218,6 +218,32 @@ export function createStreetCutscene(): StreetCutsceneHandle {
   sparkLight.position.copy(sparkPos);
   scene.add(sparkLight);
 
+  // fire at the base of the downed pole — a transformer that's actually
+  // caught, not just arcing wires. Doubles as extra light on the nearby
+  // zombie cluster, which the cold blue spark light alone didn't reach.
+  const firePos = new THREE.Vector3(pole.position.x - 0.35, 0.1, pole.position.z + 0.4);
+  const fireLight = new THREE.PointLight(0xff7a2c, 3.4, 13, 2);
+  fireLight.position.copy(firePos);
+  scene.add(fireLight);
+
+  const flameGroup = new THREE.Group();
+  flameGroup.position.copy(firePos);
+  scene.add(flameGroup);
+  const flameLayers: THREE.Mesh[] = [];
+  [
+    { color: 0xff5a1c, r: 0.24, h: 0.6, y: 0.24 },
+    { color: 0xff9a3a, r: 0.17, h: 0.46, y: 0.3 },
+    { color: 0xffd888, r: 0.1, h: 0.32, y: 0.34 },
+  ].forEach(({ color, r, h, y }) => {
+    const flame = new THREE.Mesh(
+      new THREE.ConeGeometry(r, h, 6),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.88 }),
+    );
+    flame.position.y = y;
+    flameGroup.add(flame);
+    flameLayers.push(flame);
+  });
+
   const SPARK_COUNT = 14;
   const sparkGeo = new THREE.BufferGeometry();
   sparkGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(SPARK_COUNT * 3), 3));
@@ -302,6 +328,12 @@ export function createStreetCutscene(): StreetCutsceneHandle {
       }
     }
     posAttr.needsUpdate = true;
+
+    fireLight.intensity = 3.0 + Math.random() * 0.9 + Math.sin(elapsed * 11) * 0.3;
+    for (let i = 0; i < flameLayers.length; i++) {
+      const flicker = 0.85 + Math.sin(elapsed * (9 + i * 3) + i) * 0.12 + Math.random() * 0.08;
+      flameLayers[i].scale.set(flicker, 1 + Math.random() * 0.15, flicker);
+    }
 
     for (const z of zombies) {
       z.group.rotation.y = z.baseRotY + Math.sin(elapsed * z.swaySpeed + z.swayPhase) * 0.025;

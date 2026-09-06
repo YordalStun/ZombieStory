@@ -21,7 +21,6 @@ import {
   BLACKOUT_JACK_SIGNAL_LINES,
   BLACKOUT_JACK_SIGNAL_LOST_LINES,
   BLACKOUT_JACK_CHASE_LINES,
-  BLACKOUT_JACK_RETURN_LINES,
   BLACKOUT_PLANNING_LINES,
   JACK_PHONE_MESSAGES,
 } from "@/data/dialogue/blackoutLines";
@@ -43,29 +42,54 @@ const FAMILY_TINT: Record<FamilyId, number> = {
   brother: 0x82c87a,
 };
 
+// Everyone's `y` here has to stay clear of the dialogue box, which covers
+// roughly the bottom fifth of the game canvas as a DOM overlay (see
+// #dialogue-box in ui.css: bottom:16px, min-height:100px) — the canvas
+// itself doesn't know the box exists, so anything positioned low enough
+// on screen still gets *drawn*, just invisibly, behind an opaque div. That
+// ceiling is tighter than it looks once PERSON_SCALE makes everyone taller.
 const LIVING_ROOM_FAMILY_POS: Record<FamilyId, Pos> = {
-  dad: { x: 190, y: 200 },
-  mum: { x: 222, y: 205 },
-  sister: { x: 255, y: 200 },
-  brother: { x: 285, y: 210 },
+  dad: { x: 150, y: 205 },
+  mum: { x: 205, y: 212 },
+  sister: { x: 262, y: 205 },
+  brother: { x: 315, y: 216 },
 };
-const DANNY_LIVING_ROOM_POS: Pos = { x: 225, y: 225 };
-const WINDOW_POS: Pos = { x: 350, y: 62 };
-const LILY_WINDOW_POS: Pos = { x: 340, y: 138 };
-const STAIRS_LIVING_POS: Pos = { x: 455, y: 155 };
+const DANNY_LIVING_ROOM_POS: Pos = { x: 230, y: 220 };
+const WINDOW_POS: Pos = { x: 380, y: 68 };
+const LILY_WINDOW_POS: Pos = { x: 368, y: 150 };
+const STAIRS_LIVING_POS: Pos = { x: 452, y: 160 };
 
 const LANDING_FAMILY_POS: Record<FamilyId, Pos> = {
-  dad: { x: 185, y: 180 },
-  mum: { x: 215, y: 185 },
-  sister: { x: 185, y: 205 },
-  brother: { x: 215, y: 205 },
+  dad: { x: 150, y: 160 },
+  mum: { x: 250, y: 160 },
+  sister: { x: 150, y: 212 },
+  brother: { x: 250, y: 212 },
 };
-const DANNY_LANDING_POS: Pos = { x: 245, y: 195 };
+const DANNY_LANDING_POS: Pos = { x: 350, y: 190 };
 const JACK_CHASE_EXIT_POS: Pos = { x: 460, y: 190 };
 
 const STREET_CUTSCENE_HOLD_MS = 6200;
 
 const FAMILY_DISPLAY_NAME: Record<FamilyId, string> = { mum: "mum", dad: "dad", sister: "lily", brother: "jack" };
+
+// Every other populated scene renders Danny's native 16x24 sprite through a
+// ~1.8-2.1x camera zoom (see HouseDefenseScene/ApartmentScene/etc). This
+// scene never zooms — it's a fixed tableau, not a scrolling level — so at
+// native scale everyone read as dollhouse-tiny next to a wall band sized
+// for an actual room. PERSON_SCALE applies that same factor directly to
+// the sprites instead; PROP_SCALE gives the furniture a smaller bump so
+// people end up the dominant scale reference, not furniture.
+const PERSON_SCALE = 2;
+const PROP_SCALE = 1.3;
+const STAIRS_SCALE = 1.8;
+
+/** Distinct silhouette per family member, not four recolors of the same body — see gfx/playerSpriteGen.ts. */
+const FAMILY_OUTFIT: Record<FamilyId, "pajama" | "pajama_hoodie" | "pajama_dress" | "pajama_longhair"> = {
+  dad: "pajama",
+  mum: "pajama_longhair",
+  sister: "pajama_dress",
+  brother: "pajama_hoodie",
+};
 
 /** Turns a static Player instance to face a direction without moving it — setOutfit already refreshes the idle frame from .facing/.outfit, so re-calling it after changing .facing is the cheapest way to reuse that without a new export. */
 function face(sprite: Player, dir: Direction): void {
@@ -89,6 +113,10 @@ export class BlackoutScene extends Phaser.Scene {
   private danny!: Player;
   private roomObjects: Phaser.GameObjects.GameObject[] = [];
   private powerOutOverlay!: Phaser.GameObjects.Rectangle;
+  /** Not tracked via track()/clearRoom() — it survives the living-room->landing room swap, since Dad actually carries it upstairs (see goUpstairs()). */
+  private radioSprite?: Phaser.GameObjects.Image;
+  /** Jack's phone-in-hand + the light it throws on the floor — live for the phone-check beat through to when he walks off (jackChaseBeat destroys them), not tracked/cleared with the room since nothing else touches the landing room again after this. */
+  private jackPhoneProps: Phaser.GameObjects.GameObject[] = [];
 
   constructor() {
     super(SceneKeys.BLACKOUT);
@@ -125,7 +153,10 @@ export class BlackoutScene extends Phaser.Scene {
         ]),
       ]),
     );
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => SpeakerRegistry.set(null));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      SpeakerRegistry.set(null);
+      AudioManager.stopLoop("radio_static");
+    });
 
     void this.run();
   }
@@ -143,12 +174,14 @@ export class BlackoutScene extends Phaser.Scene {
   private spawnFamily(): void {
     for (const id of Object.keys(FAMILY_TINT) as FamilyId[]) {
       const sprite = new Player(this, 0, 0);
-      sprite.setOutfit("pajama");
+      sprite.setOutfit(FAMILY_OUTFIT[id]);
       sprite.setTint(FAMILY_TINT[id]);
+      sprite.setScale(PERSON_SCALE);
       this.familySprites.set(id, sprite);
     }
     this.danny = new Player(this, 0, 0);
     this.danny.setOutfit("dressed");
+    this.danny.setScale(PERSON_SCALE);
   }
 
   private positionFamily(positions: Record<FamilyId, Pos>, dannyPos: Pos): void {
@@ -159,6 +192,16 @@ export class BlackoutScene extends Phaser.Scene {
     this.danny.setPosition(dannyPos.x, dannyPos.y).setDepth(DEPTH.ACTOR_SORT_BASE + dannyPos.y);
   }
 
+  /** A darker recessed frame plus a couple of banister posts behind/around the stairs prop, so it reads as an actual stairwell opening in the house rather than one scaled-up icon floating in a corner. */
+  private buildStairwell(x: number, y: number): void {
+    this.track(this.add.rectangle(x, y - 6, 46, 92, 0x141014).setDepth(DEPTH.ACTOR_SORT_BASE + y - 40));
+    this.track(this.add.rectangle(x - 24, y - 6, 5, 92, 0x2a2018).setDepth(DEPTH.ACTOR_SORT_BASE + y + 5));
+    this.track(this.add.rectangle(x + 24, y - 6, 5, 92, 0x2a2018).setDepth(DEPTH.ACTOR_SORT_BASE + y + 5));
+    this.track(
+      this.add.image(x, y, PropTex.STAIRS).setScale(STAIRS_SCALE).setDepth(DEPTH.ACTOR_SORT_BASE + y),
+    );
+  }
+
   private buildLivingRoom(): void {
     // both oversized past the canvas edge — cheap insurance against the
     // crash-beat camera shake exposing an exactly-edge-to-edge seam against
@@ -166,25 +209,25 @@ export class BlackoutScene extends Phaser.Scene {
     this.track(this.add.rectangle(GAME_WIDTH / 2, 195, GAME_WIDTH + 40, 190, 0x3a2c22).setDepth(DEPTH.FLOOR));
     this.track(this.add.rectangle(GAME_WIDTH / 2, 55, GAME_WIDTH + 40, 120, 0x241f2c).setDepth(DEPTH.WALL));
 
-    this.track(this.add.image(90, 55, PropTex.PICTURE_FRAME).setDepth(DEPTH.WALL + 1));
-    this.track(this.add.image(WINDOW_POS.x, WINDOW_POS.y, PropTex.WINDOW).setDepth(DEPTH.WALL + 1));
-    this.track(this.add.rectangle(WINDOW_POS.x - 34, WINDOW_POS.y, 10, 60, 0x5a2c34).setDepth(DEPTH.WALL + 1));
-    this.track(this.add.rectangle(WINDOW_POS.x + 34, WINDOW_POS.y, 10, 60, 0x5a2c34).setDepth(DEPTH.WALL + 1));
-    this.track(this.add.image(40, 95, PropTex.SWITCH_OFF).setDepth(DEPTH.WALL + 1));
+    this.track(this.add.image(90, 60, PropTex.PICTURE_FRAME).setScale(PROP_SCALE).setDepth(DEPTH.WALL + 1));
+    this.track(this.add.image(WINDOW_POS.x, WINDOW_POS.y, PropTex.WINDOW).setScale(PROP_SCALE).setDepth(DEPTH.WALL + 1));
+    this.track(this.add.rectangle(WINDOW_POS.x - 42, WINDOW_POS.y, 12, 78, 0x5a2c34).setDepth(DEPTH.WALL + 1));
+    this.track(this.add.rectangle(WINDOW_POS.x + 42, WINDOW_POS.y, 12, 78, 0x5a2c34).setDepth(DEPTH.WALL + 1));
+    this.track(this.add.image(40, 100, PropTex.SWITCH_OFF).setScale(PROP_SCALE).setDepth(DEPTH.WALL + 1));
 
-    this.track(this.add.image(150, 212, PropTex.RUG).setDepth(DEPTH.FLOOR_DECAL));
-    this.track(this.add.image(85, 188, PropTex.SOFA).setDepth(DEPTH.ACTOR_SORT_BASE + 188));
-    this.track(this.add.image(410, 172, PropTex.TV_OFF).setDepth(DEPTH.ACTOR_SORT_BASE + 172));
-    this.track(this.add.image(STAIRS_LIVING_POS.x, STAIRS_LIVING_POS.y, PropTex.STAIRS).setScale(2.2).setDepth(DEPTH.ACTOR_SORT_BASE + STAIRS_LIVING_POS.y));
+    this.track(this.add.image(150, 220, PropTex.RUG).setScale(PROP_SCALE).setDepth(DEPTH.FLOOR_DECAL));
+    this.track(this.add.image(85, 195, PropTex.SOFA).setScale(PROP_SCALE).setDepth(DEPTH.ACTOR_SORT_BASE + 195));
+    this.track(this.add.image(415, 178, PropTex.TV_OFF).setScale(PROP_SCALE).setDepth(DEPTH.ACTOR_SORT_BASE + 178));
+    this.buildStairwell(STAIRS_LIVING_POS.x, STAIRS_LIVING_POS.y);
   }
 
   private buildLanding(): void {
     this.track(this.add.rectangle(GAME_WIDTH / 2, 195, GAME_WIDTH + 40, 190, 0x342820).setDepth(DEPTH.FLOOR));
     this.track(this.add.rectangle(GAME_WIDTH / 2, 55, GAME_WIDTH + 40, 120, 0x201c28).setDepth(DEPTH.WALL));
-    this.track(this.add.image(130, 100, PropTex.DOOR).setDepth(DEPTH.ACTOR_SORT_BASE + 100));
-    this.track(this.add.image(330, 100, PropTex.DOOR).setDepth(DEPTH.ACTOR_SORT_BASE + 100));
-    this.track(this.add.image(440, 55, PropTex.WINDOW).setScale(0.7).setDepth(DEPTH.WALL + 1));
-    this.track(this.add.image(25, 165, PropTex.STAIRS).setScale(2.2).setDepth(DEPTH.ACTOR_SORT_BASE + 165));
+    this.track(this.add.image(130, 105, PropTex.DOOR).setScale(PROP_SCALE).setDepth(DEPTH.ACTOR_SORT_BASE + 105));
+    this.track(this.add.image(340, 105, PropTex.DOOR).setScale(PROP_SCALE).setDepth(DEPTH.ACTOR_SORT_BASE + 105));
+    this.track(this.add.image(445, 58, PropTex.WINDOW).setScale(PROP_SCALE * 0.55).setDepth(DEPTH.WALL + 1));
+    this.buildStairwell(35, 175);
   }
 
   private async run(): Promise<void> {
@@ -198,6 +241,7 @@ export class BlackoutScene extends Phaser.Scene {
     AudioManager.playSfx(SfxKey.BANG, { volume: 0.7, rate: 0.65 });
     this.cameras.main.shake(140, 0.004);
     AudioManager.playMusic(MusicKey.TENSION, 900);
+    this.reactToBang();
     await this.wait(250);
     await this.say(BLACKOUT_CRASH_LINES);
     await this.wait(400);
@@ -208,6 +252,7 @@ export class BlackoutScene extends Phaser.Scene {
     await this.playStreetCutscene();
     await this.wait(300);
     await this.say(BLACKOUT_WINDOW_REACTION_LINES);
+    for (const id of ["mum", "dad", "brother"] as FamilyId[]) face(this.familySprites.get(id)!, "down");
     await this.wait(400);
 
     await this.radioBeat();
@@ -226,8 +271,24 @@ export class BlackoutScene extends Phaser.Scene {
 
     await fadeOut(900);
     AudioManager.stopMusic(500);
+    AudioManager.stopLoop("radio_static");
     SaveManager.saveCheckpoint("BLACKOUT");
     this.scene.start(SceneKeys.HOUSE_DEFENSE);
+  }
+
+  /**
+   * Everyone but Lily used to just keep facing the player through the whole
+   * bang/window beat, like mannequins — a flinch and a turn toward the
+   * noise sells "something just happened to them" without needing every
+   * one of them to walk somewhere. Lily's own turn-and-walk (lilyToWindow)
+   * is left alone; this only touches the three who otherwise never react.
+   */
+  private reactToBang(): void {
+    for (const id of ["mum", "dad", "brother"] as FamilyId[]) {
+      const sprite = this.familySprites.get(id)!;
+      face(sprite, "up");
+      this.tweens.add({ targets: sprite, y: sprite.y - 4, duration: 100, yoyo: true, ease: "Sine.easeOut" });
+    }
   }
 
   /** Deliberately hers, not Danny's — the doc comment on BLACKOUT_TO_WINDOW_LINES is explicit about that. Danny's protest plays over the tween, not before it; she's already moving. */
@@ -267,7 +328,10 @@ export class BlackoutScene extends Phaser.Scene {
     await this.say(BLACKOUT_RADIO_START_LINES);
 
     const dad = this.familySprites.get("dad")!;
-    this.track(this.add.image(dad.x + 12, dad.y - 6, PropTex.POCKET_RADIO).setDepth(DEPTH.ACTOR_SORT_BASE + dad.y + 1));
+    this.radioSprite = this.add
+      .image(dad.x + 22, dad.y - 14, PropTex.POCKET_RADIO)
+      .setScale(PROP_SCALE)
+      .setDepth(DEPTH.ACTOR_SORT_BASE + dad.y + 1);
     AudioManager.startLoop("radio_static", SfxKey.RADIO_STATIC, 0.55);
     await this.wait(400);
 
@@ -280,7 +344,9 @@ export class BlackoutScene extends Phaser.Scene {
   private async goUpstairs(): Promise<void> {
     await this.say(BLACKOUT_UPSTAIRS_LINES);
 
+    const dad = this.familySprites.get("dad")!;
     const walkers = [...this.familySprites.values(), this.danny];
+    const walkScale = PERSON_SCALE * 0.75; // reads as receding toward/up the stairs, not literally shrinking
     await Promise.all(
       walkers.map(
         (sprite, i) =>
@@ -290,8 +356,8 @@ export class BlackoutScene extends Phaser.Scene {
               targets: sprite,
               x: STAIRS_LIVING_POS.x - 24 + (i - walkers.length / 2) * 6,
               y: STAIRS_LIVING_POS.y + (i % 2) * 4,
-              scaleX: 0.75,
-              scaleY: 0.75,
+              scaleX: walkScale,
+              scaleY: walkScale,
               duration: 750 + i * 70,
               delay: i * 60,
               ease: "Sine.easeIn",
@@ -301,16 +367,34 @@ export class BlackoutScene extends Phaser.Scene {
       ),
     );
 
-    AudioManager.stopLoop("radio_static");
+    // he wouldn't leave a working radio on downstairs for anything outside
+    // to hear — it goes upstairs with him, just turned right down, not off
+    AudioManager.setLoopVolume("radio_static", 0.05, 300);
+    if (this.radioSprite) {
+      this.tweens.add({ targets: this.radioSprite, x: dad.x + 22, y: dad.y - 14, duration: 700, ease: "Sine.easeIn" });
+    }
+
     await fadeOut(700);
     this.clearRoom();
     this.buildLanding();
     this.positionFamily(LANDING_FAMILY_POS, DANNY_LANDING_POS);
     for (const sprite of [...this.familySprites.values(), this.danny]) {
-      sprite.setScale(1);
+      sprite.setScale(PERSON_SCALE);
       face(sprite, "down");
     }
+    const newDad = this.familySprites.get("dad")!;
+    this.radioSprite?.setPosition(newDad.x + 22, newDad.y - 14).setDepth(DEPTH.ACTOR_SORT_BASE + newDad.y + 1);
     await fadeIn(700);
+  }
+
+  /** Repositions Jack's held phone + its floor glow onto his current spot — called whenever he moves so the light doesn't lag behind him. */
+  private updateJackPhoneProps(): void {
+    if (this.jackPhoneProps.length === 0) return;
+    const jack = this.familySprites.get("brother")!;
+    const [body, screen, glow] = this.jackPhoneProps as [Phaser.GameObjects.Rectangle, Phaser.GameObjects.Rectangle, Phaser.GameObjects.Arc];
+    body.setPosition(jack.x + 20, jack.y - 30).setDepth(DEPTH.ACTOR_SORT_BASE + jack.y + 1);
+    screen.setPosition(jack.x + 20, jack.y - 30).setDepth(DEPTH.ACTOR_SORT_BASE + jack.y + 2);
+    glow.setPosition(jack.x + 10, jack.y + 12).setDepth(DEPTH.FLOOR_DECAL + 1);
   }
 
   private async phoneCheckBeat(): Promise<void> {
@@ -321,34 +405,42 @@ export class BlackoutScene extends Phaser.Scene {
     const baseX = jack.x;
     const buzz = this.tweens.add({ targets: jack, x: baseX + 1.5, duration: 55, yoyo: true, repeat: -1 });
 
+    // held up in shot, screen lighting his hand and a soft pool of light on
+    // the floor beneath him — not just a full-screen popup with no source
+    const body = this.add.rectangle(jack.x + 20, jack.y - 30, 11, 19, 0x141416).setDepth(DEPTH.ACTOR_SORT_BASE + jack.y + 1);
+    const screen = this.add.rectangle(jack.x + 20, jack.y - 30, 8, 15, 0xaeeaff).setDepth(DEPTH.ACTOR_SORT_BASE + jack.y + 2);
+    const glow = this.add.circle(jack.x + 10, jack.y + 12, 22, 0xaeeaff, 0.55).setDepth(DEPTH.FLOOR_DECAL + 1).setBlendMode(Phaser.BlendModes.ADD);
+    this.jackPhoneProps = [body, screen, glow];
+    this.tweens.add({ targets: screen, alpha: { from: 0.6, to: 1 }, duration: 180, yoyo: true, repeat: -1 });
+    this.tweens.add({ targets: glow, alpha: { from: 0.7, to: 1 }, duration: 220, yoyo: true, repeat: -1 });
+
     await playPhoneFlash(JACK_PHONE_MESSAGES);
 
     buzz.stop();
     jack.setPosition(baseX, jack.y);
+    this.updateJackPhoneProps();
     await this.say(BLACKOUT_JACK_SIGNAL_LOST_LINES);
   }
 
+  /** Jack heads for the window and stays there — see blackoutLines.ts's doc comment on BLACKOUT_JACK_CHASE_LINES for why he never walks back into this scene. */
   private async jackChaseBeat(): Promise<void> {
     await this.say(BLACKOUT_JACK_CHASE_LINES);
 
     const jack = this.familySprites.get("brother")!;
-    const homePos = LANDING_FAMILY_POS.brother;
     face(jack, "right");
     await new Promise<void>((resolve) => {
-      this.tweens.add({ targets: jack, x: JACK_CHASE_EXIT_POS.x, y: JACK_CHASE_EXIT_POS.y, duration: 700, ease: "Sine.easeIn", onComplete: () => resolve() });
+      this.tweens.add({
+        targets: jack,
+        x: JACK_CHASE_EXIT_POS.x,
+        y: JACK_CHASE_EXIT_POS.y,
+        duration: 700,
+        ease: "Sine.easeIn",
+        onUpdate: () => this.updateJackPhoneProps(),
+        onComplete: () => resolve(),
+      });
     });
-    jack.setVisible(false);
-
-    await this.wait(1500);
-
-    jack.setPosition(JACK_CHASE_EXIT_POS.x, JACK_CHASE_EXIT_POS.y).setVisible(true);
-    face(jack, "left");
-    await new Promise<void>((resolve) => {
-      this.tweens.add({ targets: jack, x: homePos.x, y: homePos.y, duration: 700, ease: "Sine.easeOut", onComplete: () => resolve() });
-    });
-    face(jack, "down");
-
-    await this.say(BLACKOUT_JACK_RETURN_LINES);
+    face(jack, "up");
+    this.updateJackPhoneProps();
   }
 
   private say(script: DialogueScript): Promise<void> {

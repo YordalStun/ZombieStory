@@ -32,6 +32,8 @@ import {
   HALFWAY_LINES,
   HOUSE_DEFENSE_WIN_LINES,
   FAMILY_MEMBER_NAMES,
+  JACK_ASK_SIGNAL_LINES,
+  JACK_POST_DEFENSE_RETURN_LINES,
 } from "@/data/dialogue/houseDefenseLines";
 import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
@@ -114,6 +116,10 @@ export class HouseDefenseScene extends Phaser.Scene {
   private familyMembers: FamilyMemberController[] = [];
   /** Keyed alongside familyMembers for SpeakerRegistry lookups — the plain array has no id on each controller to search by. */
   private familyMembersById = new Map<FamilyMemberId, FamilyMemberController>();
+  /** Jack, standing by his window upstairs for the whole fight — see familyHouseLevel.ts's jackSpot. Not a FamilyMemberController: he never walks anywhere, just stands there checking his phone. */
+  private jackNpc?: Player;
+  private jackLight?: string;
+  private jackReturned = false;
   private zombieLastAttack = new Map<Zombie, number>();
   private focusedInteractable: string | null = null;
   /** Arcade colliders don't clean themselves up when a tilemap layer they reference is destroyed — a stale one left over from the previous floor crashes the physics step on its next update(). Tracked explicitly so loadFloor() can destroy every one of them before tearing down the geometry they point at. */
@@ -156,6 +162,7 @@ export class HouseDefenseScene extends Phaser.Scene {
     this.hordeAnnounced = false;
     this.halfwaySaid = false;
     this.upperVisited = false;
+    this.jackReturned = false;
     this.currentFloor = "ground";
 
     this.busy = true;
@@ -185,15 +192,18 @@ export class HouseDefenseScene extends Phaser.Scene {
     SpeakerRegistry.set(
       new Map<string, () => { x: number; y: number } | null>([
         [PLAYER_NAME.toLowerCase(), () => (this.player.visible ? worldToScreen(this.cameras.main, this.player.x, this.player.y - 18) : null)],
-        ...(Object.entries(FAMILY_MEMBER_NAMES) as Array<[FamilyMemberId, string]>).map(
-          ([id, name]): [string, () => { x: number; y: number } | null] => [
-            name.toLowerCase(),
-            () => {
-              const fm = this.familyMembersById.get(id);
-              return fm ? worldToScreen(this.cameras.main, fm.x, fm.y - 18) : null;
-            },
-          ],
-        ),
+        [FAMILY_MEMBER_NAMES.brother.toLowerCase(), () => (this.jackNpc ? worldToScreen(this.cameras.main, this.jackNpc.x, this.jackNpc.y - 18) : null)],
+        ...(Object.entries(FAMILY_MEMBER_NAMES) as Array<[FamilyMemberId, string]>)
+          .filter(([id]) => id !== "brother")
+          .map(
+            ([id, name]): [string, () => { x: number; y: number } | null] => [
+              name.toLowerCase(),
+              () => {
+                const fm = this.familyMembersById.get(id);
+                return fm ? worldToScreen(this.cameras.main, fm.x, fm.y - 18) : null;
+              },
+            ],
+          ),
       ]),
     );
 
@@ -246,6 +256,12 @@ export class HouseDefenseScene extends Phaser.Scene {
       for (const fm of this.familyMembers) fm.destroy();
       this.familyMembers = [];
       this.familyMembersById.clear();
+      this.jackNpc?.destroy();
+      this.jackNpc = undefined;
+      if (this.jackLight) {
+        this.lighting.remove(this.jackLight);
+        this.jackLight = undefined;
+      }
       for (const entry of this.propsById.values()) entry.sprite.destroy();
       this.propsById.clear();
       for (const spr of this.switchSprites.values()) spr.destroy();
@@ -295,6 +311,18 @@ export class HouseDefenseScene extends Phaser.Scene {
     // Not a breach spawn — these already broke in before the floor was torn
     // down (leaving via the stairs and coming back shouldn't replay that).
     for (const record of records) this.spawnZombieFromRecord(record, data, false);
+
+    if (floor === "upper" && data.jackSpot && !this.jackReturned) {
+      const jack = new Player(this, data.jackSpot.x, data.jackSpot.y);
+      jack.facing = "up"; // facing the window, not the player
+      jack.setOutfit("pajama_hoodie");
+      jack.setTint(FAMILY_TINT.brother);
+      jack.setControlsEnabled(false);
+      this.lighting.makeLit(jack);
+      this.jackNpc = jack;
+      this.jackLight = "jack_phone";
+      this.lighting.addLight(this.jackLight, data.jackSpot.x, data.jackSpot.y + 6, 26, 0xaeeaff, 0.6, { intensityJitter: 0.15 });
+    }
 
     for (const sw of data.switches) {
       if (this.lightsOff[sw.id]) continue;
@@ -542,6 +570,8 @@ export class HouseDefenseScene extends Phaser.Scene {
     EventBus.emit(Events.PROMPT_HIDE);
     AudioManager.stopMusic();
 
+    this.jackReturned = true;
+    await this.say(JACK_POST_DEFENSE_RETURN_LINES);
     await this.say(HOUSE_DEFENSE_WIN_LINES);
     await fadeOut(1400);
     SaveManager.saveCheckpoint("HOUSE_DEFENSE");
@@ -660,6 +690,17 @@ export class HouseDefenseScene extends Phaser.Scene {
       }
     }
 
+    if (this.jackNpc) {
+      const dist = Phaser.Math.Distance.Between(this.jackNpc.x, this.jackNpc.y, this.player.x, this.player.y);
+      if (dist <= 34 && dist < closestDist) {
+        closestDist = dist;
+        closestId = "jack";
+        closestX = this.jackNpc.x;
+        closestY = this.jackNpc.y;
+        closestPrompt = "Ask about signal";
+      }
+    }
+
     this.focusedInteractable = closestId;
 
     if (closestId) {
@@ -674,6 +715,11 @@ export class HouseDefenseScene extends Phaser.Scene {
   private async handleInteract(id: string | null): Promise<void> {
     if (id === "stairs_up" || id === "stairs_down") {
       await this.useStairs();
+      return;
+    }
+    if (id === "jack") {
+      const line = JACK_ASK_SIGNAL_LINES[Math.floor(Math.random() * JACK_ASK_SIGNAL_LINES.length)];
+      await this.playLinesBlocking(line);
       return;
     }
     if (id?.startsWith("pickup_")) this.pickUpWeapon(id);
