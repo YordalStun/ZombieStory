@@ -15,13 +15,18 @@ class WeaponManagerClass {
    * One slot: Danny's hands, not a bag. There's no switch-weapon control,
    * so letting pickups pile up just left every weapon but the first one
    * dead weight in the panel — picking up a new one now drops whatever he
-   * was already holding.
+   * was already holding. Returns the id of whatever got dropped (or null,
+   * if there was nothing equipped, or the pickup was a no-op) so a caller
+   * that has real ground props can actually leave the old weapon lying
+   * where Danny swapped it, instead of it just vanishing.
    */
-  pickUp(id: string): void {
-    if (!WEAPONS[id] || this.equippedId === id) return;
+  pickUp(id: string): string | null {
+    if (!WEAPONS[id] || this.equippedId === id) return null;
+    const dropped = this.equippedId;
     this.ownedIds = [id];
     this.equippedId = id;
     this.emit();
+    return dropped;
   }
 
   equip(id: string): void {

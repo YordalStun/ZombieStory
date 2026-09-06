@@ -14,6 +14,9 @@ const KNOCKBACK_PER_DAMAGE = 30;
 const KNOCKBACK_MS = 160;
 /** Matches the HUD's own "DIM LIGHT" boundary (see HUDUI.ts) — attracted to light means even dim light should register, not just fully lit. */
 const AGGRO_LIGHT_THRESHOLD = 0.32;
+/** Speed while crossing from the exterior breach spot to the interior landing point — see startBreach(). Deliberately slower than a chase, so there's a real window (pun intended) to hit it before it's fully inside. */
+const BREACH_SPEED = 20;
+const BREACH_ARRIVE_DIST = 4;
 
 export interface ZombieOptions {
   state?: ZombieState;
@@ -47,6 +50,11 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   private idleSway?: Phaser.Tweens.Tween;
   private alwaysHittable: boolean;
   private knockbackUntil = 0;
+  /** Set the instant it's ever hit — once a zombie has been engaged in melee it commits to closing back in after a knockback shove, rather than needing to re-satisfy the light/range aggro gate (which a knockback can easily push it outside of, leaving it stranded just out of reach forever). */
+  private provoked = false;
+  private breaching = false;
+  private breachTarget: { x: number; y: number } | null = null;
+  private onBreachComplete?: () => void;
 
   constructor(scene: Phaser.Scene, x: number, y: number, opts: ZombieOptions = {}) {
     super(scene, x, y, FigureTex.ZOMBIE);
@@ -76,6 +84,19 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
       repeat: -1,
       ease: "Sine.easeInOut",
     });
+  }
+
+  /**
+   * Starts it just outside a window and lets it cross into the room over
+   * BREACH_SPEED, rather than appearing already inside. It stays fully
+   * hittable the whole time (state stays "dormant", but house-defense
+   * zombies are always alwaysHittable) — the point is a real few seconds
+   * where it can be fought right at the window before it's actually in.
+   */
+  startBreach(targetX: number, targetY: number, onComplete?: () => void): void {
+    this.breaching = true;
+    this.breachTarget = { x: targetX, y: targetY };
+    this.onBreachComplete = onComplete;
   }
 
   /** Turns a dormant zombie hostile: it starts chasing and can now be hurt / hurt the player. */
@@ -111,6 +132,7 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
   hit(damage: number, fromX?: number, fromY?: number): boolean {
     if (this.state === "dead") return false;
     if (this.state === "dormant" && !this.alwaysHittable) return false;
+    this.provoked = true;
     this.health -= damage;
     this.hitFlashTimer = HIT_FLASH_MS;
     this.setTintFill(0xffffff);
@@ -175,9 +197,28 @@ export class Zombie extends Phaser.Physics.Arcade.Sprite {
       this.knockbackUntil = 0;
     }
 
+    if (this.breaching && this.breachTarget) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const dx = this.breachTarget.x - this.x;
+      const dy = this.breachTarget.y - this.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= BREACH_ARRIVE_DIST) {
+        this.setPosition(this.breachTarget.x, this.breachTarget.y);
+        body.setVelocity(0, 0);
+        this.breaching = false;
+        this.breachTarget = null;
+        const onComplete = this.onBreachComplete;
+        this.onBreachComplete = undefined;
+        onComplete?.();
+      } else {
+        body.setVelocity((dx / dist) * BREACH_SPEED, (dy / dist) * BREACH_SPEED);
+      }
+      return; // no aggro/chase logic while it's still crossing the window
+    }
+
     if (aggroGate) {
       const dist = Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY);
-      const shouldChase = dist <= aggroGate.range && aggroGate.lightLevel >= AGGRO_LIGHT_THRESHOLD;
+      const shouldChase = this.provoked || (dist <= aggroGate.range && aggroGate.lightLevel >= AGGRO_LIGHT_THRESHOLD);
       if (shouldChase) this.wake();
       else this.calm();
     }

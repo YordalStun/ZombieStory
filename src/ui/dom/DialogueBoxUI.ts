@@ -57,15 +57,17 @@ export function initDialogueBoxUI(): void {
     const count = Math.min(fullText.length, Math.floor(revealed));
     textEl.textContent = fullText.slice(0, count);
 
-    // one blip roughly every 3 newly-revealed non-space characters — reads
-    // as a steady mutter rather than a machine gun of individual clicks
-    while (blipsPlayed * 3 < count) {
+    // one blip roughly every 5 newly-revealed non-space characters — a
+    // sparser mutter than before (was every 3rd), since a blip a second on
+    // every line of a text-heavy game reads as a constant nagging click
+    // rather than a voice
+    while (blipsPlayed * 5 < count) {
       blipsPlayed++;
-      const ch = fullText[blipsPlayed * 3 - 1];
+      const ch = fullText[blipsPlayed * 5 - 1];
       if (ch && ch !== " ") {
         AudioManager.playSfx(SfxKey.TALK_BLIP, {
-          volume: 0.32,
-          rate: voiceRate * (0.94 + Math.random() * 0.12),
+          volume: 0.2,
+          rate: voiceRate * (0.9 + Math.random() * 0.2),
         });
       }
     }
@@ -102,7 +104,7 @@ export function initDialogueBoxUI(): void {
       textEl.textContent = fullText;
       continueEl.classList.remove("hidden");
     } else {
-      AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.5 });
+      AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.32 });
       EventBus.emit(Events.DIALOGUE_ADVANCE_REQUEST);
     }
   }

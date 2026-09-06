@@ -150,8 +150,12 @@ export interface SwitchSpec {
 
 export interface EntrySpec {
   id: string;
+  /** Interior landing point, just inside the room past the window. */
   x: number;
   y: number;
+  /** Exterior spot a zombie first appears at, just outside the same window — see the small carved yard notch next to each breach window below. Ground floor only; upstairs has no breach points at all. */
+  outsideX?: number;
+  outsideY?: number;
 }
 
 export interface FloorLevel {
@@ -203,6 +207,18 @@ export function buildFamilyHouseGroundFloor(): FloorLevel {
   grid.set(3, KITCHEN.y + KITCHEN.h - 1, TILE.WINDOW_NIGHT);
   grid.set(DINING.x + DINING.w - 1, DINING.y, TILE.WINDOW_NIGHT);
   grid.set(STUDY.x + STUDY.w - 1, STUDY.y + STUDY.h - 1, TILE.WINDOW_NIGHT);
+
+  // A small carved-out yard notch just past each breach window — otherwise
+  // "outside" this house is solid WALL_EXT with no walkable tile at all, so
+  // a zombie spawned there would just be shoved straight into the room by
+  // tile-collision separation the instant it appeared, reading as "spawning
+  // in the wall" rather than breaking in from outside. These pockets give
+  // it somewhere real to start from and a window's-width of wall to
+  // actually cross (see HouseDefenseScene's breach spawn).
+  grid.set(3, LIVING.y - 1, TILE.GRASS);
+  grid.set(3, KITCHEN.y + KITCHEN.h, TILE.GRASS);
+  grid.set(DINING.x + DINING.w, DINING.y, TILE.GRASS);
+  grid.set(STUDY.x + STUDY.w, STUDY.y + STUDY.h - 1, TILE.GRASS);
 
   const props: PropSpec[] = [];
 
@@ -282,10 +298,30 @@ export function buildFamilyHouseGroundFloor(): FloorLevel {
       },
     ],
     breachPoints: [
-      { id: "living_window", x: tileCenter(3, LIVING.y).x, y: tileCenter(3, LIVING.y).y },
-      { id: "kitchen_window", x: tileCenter(3, KITCHEN.y + KITCHEN.h - 1).x, y: tileCenter(3, KITCHEN.y + KITCHEN.h - 1).y },
-      { id: "dining_window", x: tileCenter(DINING.x + DINING.w - 1, DINING.y).x, y: tileCenter(DINING.x + DINING.w - 1, DINING.y).y },
-      { id: "study_window", x: tileCenter(STUDY.x + STUDY.w - 1, STUDY.y + STUDY.h - 1).x, y: tileCenter(STUDY.x + STUDY.w - 1, STUDY.y + STUDY.h - 1).y },
+      {
+        id: "living_window",
+        ...tileCenter(3, LIVING.y + 1),
+        outsideX: tileCenter(3, LIVING.y - 1).x,
+        outsideY: tileCenter(3, LIVING.y - 1).y,
+      },
+      {
+        id: "kitchen_window",
+        ...tileCenter(3, KITCHEN.y + KITCHEN.h - 2),
+        outsideX: tileCenter(3, KITCHEN.y + KITCHEN.h).x,
+        outsideY: tileCenter(3, KITCHEN.y + KITCHEN.h).y,
+      },
+      {
+        id: "dining_window",
+        ...tileCenter(DINING.x + DINING.w - 2, DINING.y),
+        outsideX: tileCenter(DINING.x + DINING.w, DINING.y).x,
+        outsideY: tileCenter(DINING.x + DINING.w, DINING.y).y,
+      },
+      {
+        id: "study_window",
+        ...tileCenter(STUDY.x + STUDY.w - 2, STUDY.y + STUDY.h - 1),
+        outsideX: tileCenter(STUDY.x + STUDY.w, STUDY.y + STUDY.h - 1).x,
+        outsideY: tileCenter(STUDY.x + STUDY.w, STUDY.y + STUDY.h - 1).y,
+      },
     ],
     stairsAt: stairs,
     entryAt: tileCenter(HALL.x + 3, 1.5),

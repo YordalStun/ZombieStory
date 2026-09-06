@@ -20,6 +20,7 @@ import { AudioManager, SfxKey, MusicKey } from "@/core/managers/AudioManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
+import { WEAPONS } from "@/core/combat/weapons";
 import { PlayerHealth } from "@/core/managers/PlayerHealth";
 import { swingWeapon, updateHeldWeapon } from "@/core/combat/swing";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
@@ -73,6 +74,15 @@ const FAMILY_TINT: Record<FamilyMemberId, number> = {
   dad: 0x7fa0d8,
   sister: 0xf0c860,
   brother: 0x82c87a,
+};
+
+/** Ground-pickup art for whatever Danny just swapped out — see pickUpWeapon(). */
+const WEAPON_DROP_TEX: Record<string, string> = {
+  cricket_bat: PropTex.BAT,
+  knife: PropTex.KNIFE,
+  crowbar: PropTex.CROWBAR,
+  frying_pan: PropTex.FRYING_PAN,
+  fire_poker: PropTex.FIRE_POKER,
 };
 
 /**
@@ -260,7 +270,9 @@ export class HouseDefenseScene extends Phaser.Scene {
     }
 
     const records = floor === "ground" ? this.groundRecords : this.upperRecords;
-    for (const record of records) this.spawnZombieFromRecord(record, data);
+    // Not a breach spawn — these already broke in before the floor was torn
+    // down (leaving via the stairs and coming back shouldn't replay that).
+    for (const record of records) this.spawnZombieFromRecord(record, data, false);
 
     for (const sw of data.switches) {
       if (this.lightsOff[sw.id]) continue;
@@ -305,19 +317,35 @@ export class HouseDefenseScene extends Phaser.Scene {
   // Zombies
   // -------------------------------------------------------------------
 
-  private spawnZombieFromRecord(record: ZombieRecord, data: FloorLevel): Zombie {
+  private spawnZombieFromRecord(record: ZombieRecord, data: FloorLevel, breach: boolean): Zombie {
     const point = data.breachPoints[record.breachIndex % data.breachPoints.length];
+    const hasOutside = breach && point.outsideX !== undefined && point.outsideY !== undefined;
+    const spawnX = hasOutside ? point.outsideX! : point.x;
+    const spawnY = hasOutside ? point.outsideY! : point.y;
+
     // Deliberately NOT lit (see LightingManager.makeLit) — zombies stay
     // visible at full brightness regardless of room darkness. The house's
     // win condition requires every room light off, so darkening threats
     // along with the environment would make the last stretch unwinnable to
     // actually see and finish.
-    const zombie = new Zombie(this, point.x, point.y, { state: "dormant", health: record.health, alwaysHittable: true });
-    this.colliders.push(this.physics.add.collider(zombie, this.wallLayer));
+    const zombie = new Zombie(this, spawnX, spawnY, { state: "dormant", health: record.health, alwaysHittable: true });
     this.colliders.push(this.physics.add.collider(this.player, zombie));
     for (const entry of this.propsById.values()) {
       if (entry.spec.solid) this.colliders.push(this.physics.add.collider(zombie, entry.sprite as Phaser.Physics.Arcade.Image));
     }
+
+    if (hasOutside) {
+      // Starts outside the window and crosses in over a couple of seconds,
+      // fully hittable the whole time — no wall collider yet, or it'd just
+      // be shoved straight back out the moment it touches the solid window
+      // tile. Added only once it actually finishes crossing.
+      zombie.startBreach(point.x, point.y, () => {
+        this.colliders.push(this.physics.add.collider(zombie, this.wallLayer));
+      });
+    } else {
+      this.colliders.push(this.physics.add.collider(zombie, this.wallLayer));
+    }
+
     this.liveZombies.push({ zombie, record });
     return zombie;
   }
@@ -326,7 +354,7 @@ export class HouseDefenseScene extends Phaser.Scene {
     const records = this.currentFloor === "ground" ? this.groundRecords : this.upperRecords;
     const record: ZombieRecord = { breachIndex: records.length, health: ZOMBIE_START_HEALTH };
     records.push(record);
-    const zombie = this.spawnZombieFromRecord(record, this.currentFloorData);
+    const zombie = this.spawnZombieFromRecord(record, this.currentFloorData, true);
 
     AudioManager.playSfx(SfxKey.BANG, { volume: 0.5 });
     zombie.setScale(0.5);
@@ -631,12 +659,29 @@ export class HouseDefenseScene extends Phaser.Scene {
     const entry = this.propsById.get(id);
     if (!entry) return;
     const weaponId = id.slice("pickup_".length);
-    WeaponManager.pickUp(weaponId);
+    const dropped = WeaponManager.pickUp(weaponId);
     AudioManager.playSfx(SfxKey.INTERACT, { volume: 0.6 });
     entry.sprite.destroy();
     this.propsById.delete(id);
     this.focusedInteractable = null;
     EventBus.emit(Events.PROMPT_HIDE);
+
+    // whatever Danny was already holding lands at his feet, not into thin
+    // air — a single weapon slot only makes sense as a real swap
+    if (dropped && dropped !== weaponId) {
+      const dropTex = WEAPON_DROP_TEX[dropped];
+      const dropId = `pickup_${dropped}`;
+      if (dropTex) {
+        this.propsById.get(dropId)?.sprite.destroy();
+        this.createProp({
+          id: dropId,
+          tex: dropTex,
+          x: this.player.x,
+          y: this.player.y + 6,
+          interactable: { prompt: `Take ${WEAPONS[dropped]?.name ?? "weapon"}`, range: 20 },
+        });
+      }
+    }
   }
 
   private async useStairs(): Promise<void> {

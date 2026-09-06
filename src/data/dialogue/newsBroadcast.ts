@@ -16,7 +16,7 @@ export const MORNING_BROADCAST: DialogueScript = [
   { speaker: "NEWSLINE", text: "If you're just waking up — and I understand many of you did not sleep — here's what changed overnight." },
   { speaker: "MARCUS WELL — NEWSLINE", text: "The outbreak officials wouldn't name last night now has a name. They're calling it 'HV-1.' They still won't call it what everyone watching already knows it is." },
   { speaker: "MARCUS WELL — NEWSLINE", text: "Three more counties are under mandatory shelter orders as of five a.m. The motorway south of the city is closed in both directions." },
-  { speaker: "SARAH KIM — NEWSLINE", text: "We're now getting footage out of the city centre that... we're going to move away from that shot. I apologise." },
+  { speaker: "SARAH KIM — NEWSLINE", text: "We're now getting reports out of the city centre that we can't yet verify, so we won't speculate on air." },
   { speaker: "NEWSLINE", text: "If you must leave home this morning, officials are asking that you avoid the city centre entirely and stay near main roads." },
   { speaker: "MARCUS WELL — NEWSLINE", text: "We'll remain on air as long as we're able. If you have somewhere safer to be than here — go." },
 ];

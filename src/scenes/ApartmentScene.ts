@@ -46,6 +46,10 @@ import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
+import { playDoorOpen } from "@/core/fx/doorAnim";
+import { ObjectiveGlow } from "@/core/fx/objectiveGlow";
+import { PropSize } from "@/gfx/props";
+import type { ObjectiveState } from "@/core/managers/ObjectiveManager";
 
 const DOG_PET_RANGE = 24;
 
@@ -56,6 +60,14 @@ const MORNING_OBJECTIVES = [
   { id: STORY_FLAGS.ATE, label: "Eat something" },
   { id: STORY_FLAGS.GRABBED_KEYS, label: "Grab your keys" },
 ];
+
+/** Which prop lights up for each still-outstanding morning objective. */
+const OBJECTIVE_PROP: Record<string, string> = {
+  [STORY_FLAGS.DRESSED]: "dresser",
+  [STORY_FLAGS.WASHED_UP]: "sink",
+  [STORY_FLAGS.ATE]: "counter",
+  [STORY_FLAGS.GRABBED_KEYS]: "keys",
+};
 
 interface PropEntry {
   spec: PropSpec;
@@ -86,6 +98,8 @@ export class ApartmentScene extends Phaser.Scene {
   private showerDripParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
   private roomOverlays = new Map<string, Phaser.GameObjects.Rectangle>();
   private currentRoomId: string | null = null;
+  private objectiveGlows = new Map<string, ObjectiveGlow>();
+  private onObjectiveSet = (state: ObjectiveState): void => this.updateObjectiveGlows(state);
 
   constructor() {
     super(SceneKeys.APARTMENT);
@@ -141,8 +155,15 @@ export class ApartmentScene extends Phaser.Scene {
     this.lighting.setEnabled("kitchen_window_glow", false);
     this.setupShowerDrip();
     this.setupRoomOverlays();
+    this.setupObjectiveGlows();
 
-    const dressed = !!SaveManager.loadProgress()?.flags[STORY_FLAGS.DRESSED];
+    // a resumed save already has these flags set — the keys prop must not
+    // reappear (or the front door read as unopened) just because the level
+    // gets rebuilt fresh on every scene create()
+    const flags = SaveManager.loadProgress()?.flags ?? {};
+    if (flags[STORY_FLAGS.GRABBED_KEYS]) this.removeProp("keys");
+
+    const dressed = !!flags[STORY_FLAGS.DRESSED];
     this.player = new Player(this, level.playerStartBedroom.x, level.playerStartBedroom.y);
     this.player.setOutfit(dressed ? "dressed" : "pajama");
     this.lighting.makeLit(this.player);
@@ -163,6 +184,8 @@ export class ApartmentScene extends Phaser.Scene {
 
     this.setupInput();
 
+    EventBus.on(Events.OBJECTIVE_SET, this.onObjectiveSet);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.lighting.destroy();
       this.rain?.destroy();
@@ -170,7 +193,10 @@ export class ApartmentScene extends Phaser.Scene {
       AudioManager.stopLoop("rain");
       AudioManager.stopLoop("wind");
       EventBus.emit(Events.PROMPT_HIDE);
+      EventBus.off(Events.OBJECTIVE_SET, this.onObjectiveSet);
       ObjectiveManager.clear();
+      for (const glow of this.objectiveGlows.values()) glow.destroy();
+      this.objectiveGlows.clear();
     });
 
     if (this.checkpoint === "NIGHT_CUTSCENE") {
@@ -355,6 +381,42 @@ export class ApartmentScene extends Phaser.Scene {
         if (dist < 58) AudioManager.playSfx(SfxKey.DRIP, { volume: 0.13 });
       },
     });
+  }
+
+  private removeProp(id: string): void {
+    const entry = this.propsById.get(id);
+    if (!entry) return;
+    entry.sprite.destroy();
+    this.propsById.delete(id);
+    if (this.focusedInteractable === id) {
+      this.focusedInteractable = null;
+      EventBus.emit(Events.PROMPT_HIDE);
+    }
+  }
+
+  /** One pulsing ring per still-relevant objective prop (dresser/sink/counter/keys, then the front door once all four are done) — created once, just shown or hidden as the checklist changes. */
+  private setupObjectiveGlows(): void {
+    const ids = [...Object.values(OBJECTIVE_PROP), "front_door"];
+    for (const id of ids) {
+      const entry = this.propsById.get(id);
+      if (!entry) continue;
+      const size = PropSize[entry.spec.tex] ?? { w: 16, h: 16 };
+      const glow = new ObjectiveGlow(this, entry.spec.x, entry.spec.y, size.w, size.h, entry.sprite.depth);
+      this.objectiveGlows.set(id, glow);
+    }
+  }
+
+  private updateObjectiveGlows(state: ObjectiveState): void {
+    const remaining = new Set(state.objectives.filter((o) => !o.done).map((o) => o.id));
+    let anyMorningLeft = false;
+    for (const [flagId, propId] of Object.entries(OBJECTIVE_PROP)) {
+      const active = remaining.has(flagId);
+      if (active) anyMorningLeft = true;
+      this.objectiveGlows.get(propId)?.setActive(active);
+    }
+    // the front door only lights up once there's nothing left to do first —
+    // it's the very next thing to interact with, not a fifth simultaneous target
+    this.objectiveGlows.get("front_door")?.setActive(!anyMorningLeft && state.objectives.length > 0);
   }
 
   /** Rooms the player isn't currently in read as dimmer — a soft "can't really see in there" cue rather than true fog of war. */
@@ -577,7 +639,9 @@ export class ApartmentScene extends Phaser.Scene {
       const door = this.propsById.get("front_door");
       const body = door?.sprite.body as Phaser.Physics.Arcade.StaticBody | undefined;
       if (body) body.enable = false;
-      AudioManager.playSfx(SfxKey.DOOR, { volume: 0.6 });
+      this.objectiveGlows.get("front_door")?.setActive(false);
+      if (door) void playDoorOpen(this, door.sprite);
+      else AudioManager.playSfx(SfxKey.DOOR, { volume: 0.6 });
     }
     await this.playLinesBlocking(FRONT_DOOR_LINES);
   }
@@ -657,6 +721,10 @@ export class ApartmentScene extends Phaser.Scene {
       SaveManager.setFlag(STORY_FLAGS.GRABBED_KEYS, true);
       ObjectiveManager.complete(STORY_FLAGS.GRABBED_KEYS);
     }
+    AudioManager.playSfx(SfxKey.UI_CLICK, { volume: 0.4 });
+    this.objectiveGlows.get("keys")?.destroy();
+    this.objectiveGlows.delete("keys");
+    this.removeProp("keys");
   }
 
   private async interactCar(): Promise<void> {

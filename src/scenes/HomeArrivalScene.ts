@@ -24,6 +24,9 @@ import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
+import { playDoorOpen } from "@/core/fx/doorAnim";
+import { ObjectiveGlow } from "@/core/fx/objectiveGlow";
+import { PropSize } from "@/gfx/props";
 
 interface PropEntry {
   spec: PropSpec;
@@ -50,6 +53,7 @@ export class HomeArrivalScene extends Phaser.Scene {
   private focusedInteractable: string | null = null;
   private busy = true;
   private zombieDead = false;
+  private doorGlow?: ObjectiveGlow;
 
   constructor() {
     super(SceneKeys.HOME_ARRIVAL);
@@ -105,6 +109,12 @@ export class HomeArrivalScene extends Phaser.Scene {
       this.physics.add.collider(this.zombie, entry.sprite as Phaser.Physics.Arcade.Image);
     }
 
+    const doorEntry = this.propsById.get("front_door");
+    if (doorEntry) {
+      const size = PropSize[doorEntry.spec.tex] ?? { w: 16, h: 48 };
+      this.doorGlow = new ObjectiveGlow(this, doorEntry.spec.x, doorEntry.spec.y, size.w, size.h, doorEntry.sprite.depth);
+    }
+
     this.setupInput();
     this.cameras.main.setZoom(1.8);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
@@ -113,6 +123,7 @@ export class HomeArrivalScene extends Phaser.Scene {
       this.lighting.destroy();
       EventBus.emit(Events.PROMPT_HIDE);
       ObjectiveManager.clear();
+      this.doorGlow?.destroy();
     });
 
     void this.openingBeat();
@@ -215,6 +226,7 @@ export class HomeArrivalScene extends Phaser.Scene {
     await this.wait(700);
     await this.say(ZOMBIE_DEAD_LINES);
     ObjectiveManager.start("Get inside", [{ id: "go_inside", label: "Head through the front door" }], []);
+    this.doorGlow?.setActive(true);
   }
 
   private updateInteractionFocus(): void {
@@ -280,7 +292,10 @@ export class HomeArrivalScene extends Phaser.Scene {
     ObjectiveManager.complete("go_inside");
 
     await this.say(GO_INSIDE_LINES);
-    AudioManager.playSfx(SfxKey.DOOR, { volume: 0.5 });
+    this.doorGlow?.setActive(false);
+    const door = this.propsById.get("front_door");
+    if (door) await playDoorOpen(this, door.sprite, { holdMs: 400 });
+    else AudioManager.playSfx(SfxKey.DOOR, { volume: 0.5 });
 
     await fadeOut(1400);
     SaveManager.saveCheckpoint("HOME_ARRIVAL");

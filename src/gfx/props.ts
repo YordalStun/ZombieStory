@@ -18,6 +18,7 @@ export const PropTex = {
   SWITCH_ON: "prop_switch_on",
   RUG: "prop_rug",
   KEYS_HOOK: "prop_keys_hook",
+  KEYS_TABLE: "prop_keys_table",
   PICTURE_FRAME: "prop_picture_frame",
   LAVA_LAMP_ON: "prop_lava_lamp_on",
   LAVA_LAMP_OFF: "prop_lava_lamp_off",
@@ -66,6 +67,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.SWITCH_ON]: { w: 6, h: 10 },
   [PropTex.RUG]: { w: 28, h: 20 },
   [PropTex.KEYS_HOOK]: { w: 8, h: 10 },
+  [PropTex.KEYS_TABLE]: { w: 9, h: 6 },
   [PropTex.PICTURE_FRAME]: { w: 14, h: 11 },
   [PropTex.LAVA_LAMP_ON]: { w: 8, h: 14 },
   [PropTex.LAVA_LAMP_OFF]: { w: 8, h: 14 },
@@ -125,9 +127,16 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 0, 0, 7, 3, Palette.hair);
   });
 
+  // the screen shows a tiny newsroom rather than a flat colour panel — a
+  // desk, two anchors, and a breaking-news ticker bar, small as it is
   draw(scene, PropTex.TV_ON, (ctx, w, h) => {
     rect(ctx, 0, 0, w, h, Palette.tvBody);
     rect(ctx, 2, 2, w - 4, h - 6, Palette.tvScreenOn);
+    rect(ctx, 4, 5, w - 8, 3, 0xd8a878); // anchor desk backdrop glow
+    rect(ctx, 5, 6, 2, 3, 0x2a1c14); // anchor silhouette 1
+    rect(ctx, w - 9, 6, 2, 3, 0x2a1c14); // anchor silhouette 2
+    rect(ctx, 3, h - 9, w - 6, 3, 0x1c3a52); // anchor desk
+    rect(ctx, 3, h - 6, w - 6, 2, 0xc23a3a); // "breaking news" ticker bar
     rect(ctx, w / 2 - 3, h - 3, 6, 3, Palette.tvBody);
     outline(ctx, 2, 2, w - 4, h - 6, 0x7fd6f2);
   });
@@ -172,6 +181,9 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 0, 0, w, h, Palette.doorFrame);
     rect(ctx, 1, 1, w - 2, h / 2 - 2, Palette.doorWood);
     rect(ctx, 1, h / 2 + 1, w - 2, h / 2 - 2, Palette.doorWood);
+    outline(ctx, 2, 2, w - 4, h / 2 - 4, 0x5a4028);
+    outline(ctx, 2, h / 2 + 2, w - 4, h / 2 - 4, 0x5a4028);
+    outline(ctx, 0, 0, w, h, 0x2a1c10);
     rect(ctx, w / 2 - 1, h / 2 - 6, 2, 2, 0xd8c68a);
     rect(ctx, w / 2 - 1, h / 2 + 4, 2, 2, 0xd8c68a);
   });
@@ -182,6 +194,9 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 0, 0, w, h, Palette.doorFrame);
     rect(ctx, 1, 1, w / 2 - 2, h - 2, Palette.doorWood);
     rect(ctx, w / 2 + 1, 1, w / 2 - 2, h - 2, Palette.doorWood);
+    outline(ctx, 2, 2, w / 2 - 4, h - 4, 0x5a4028);
+    outline(ctx, w / 2 + 2, 2, w / 2 - 4, h - 4, 0x5a4028);
+    outline(ctx, 0, 0, w, h, 0x2a1c10);
     rect(ctx, w / 2 - 4, h / 2 - 1, 2, 2, 0xd8c68a);
     rect(ctx, w / 2 + 2, h / 2 - 1, 2, 2, 0xd8c68a);
   });
@@ -227,6 +242,15 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, 1, 3, 4, 2, 0xb8a04a);
     rect(ctx, 3, 5, 1, 4, 0xcfc8b0);
     rect(ctx, 5, 5, 1, 3, 0xcfc8b0);
+  });
+
+  // lying flat on a table rather than hanging from a hook — a keyring loop
+  // plus two key blades, no hook shape needed
+  draw(scene, PropTex.KEYS_TABLE, (ctx, w, _h) => {
+    outline(ctx, 0, 1, 4, 4, 0xcfc8b0);
+    rect(ctx, 4, 2, 4, 1, 0xb8a04a);
+    rect(ctx, 4, 4, 3, 1, 0xb8a04a);
+    rect(ctx, w - 1, 2, 1, 1, 0xe0d8b8);
   });
 
   draw(scene, PropTex.PICTURE_FRAME, (ctx, w, h) => {

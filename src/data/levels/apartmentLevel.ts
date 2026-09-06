@@ -130,6 +130,9 @@ export function buildApartmentLevel(): ApartmentLevel {
       color: 0xaeeaff,
       intensity: 1.6,
       flicker: { intensityJitter: 0.22, radiusJitter: 0.08 },
+      // a broadcast cutting between shots reads in the room as the light
+      // shifting tone every couple of seconds, not just flickering brighter/dimmer
+      colorCycle: { colors: [0xaeeaff, 0x8fd0f0, 0xd8e8ff, 0x9fe0ff, 0xc8d8ff], periodMs: 2600 },
     },
   });
 
@@ -227,7 +230,9 @@ export function buildApartmentLevel(): ApartmentLevel {
   const bathMat = tileCenter(12.2, 6.3);
   props.push({ id: "bath_mat", tex: PropTex.RUG, x: bathMat.x, y: bathMat.y, floorDecal: true, tint: 0x5a8fae });
 
-  const bathSwitch = tileCenter(12.6, 6.9);
+  // flush against the wall beside the hallway doorway, not floating in the
+  // middle of the room the way a mid-floor coordinate used to read
+  const bathSwitch = tileCenter(13, 7.7);
   props.push({
     id: "bathroom_switch",
     tex: PropTex.SWITCH_OFF,
@@ -262,7 +267,9 @@ export function buildApartmentLevel(): ApartmentLevel {
   const kitchenMat = tileCenter(19.5, 5.6);
   props.push({ id: "kitchen_mat", tex: PropTex.RUG, x: kitchenMat.x, y: kitchenMat.y, floorDecal: true, tint: 0xb0a058 });
 
-  const kitchenSwitch = tileCenter(18.4, 6.9);
+  // flush against the wall beside the hallway doorway, same fix as the
+  // bathroom switch above
+  const kitchenSwitch = tileCenter(19.7, 7.7);
   props.push({
     id: "kitchen_switch",
     tex: PropTex.SWITCH_OFF,
@@ -271,10 +278,14 @@ export function buildApartmentLevel(): ApartmentLevel {
     interactable: { prompt: "Flip light switch", range: 20 },
   });
 
-  const keys = tileCenter(23.4, 5.8);
+  // a small table by the front door, not a wall hook — keys sit on top of it
+  const entryTable = tileCenter(22.3, 5.8);
+  props.push({ id: "entry_table", tex: PropTex.COUNTER, x: entryTable.x, y: entryTable.y, solid: true, tint: 0x8a6a4a });
+
+  const keys = tileCenter(22.3, 5.1);
   props.push({
     id: "keys",
-    tex: PropTex.KEYS_HOOK,
+    tex: PropTex.KEYS_TABLE,
     x: keys.x,
     y: keys.y,
     interactable: { prompt: "Grab keys", range: 20 },
