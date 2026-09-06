@@ -1,0 +1,46 @@
+/* ---------- speech marker (tracks whoever's currently talking) ---------- */
+
+#speech-marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#speech-marker.hidden {
+  display: none;
+}
+
+#speech-marker-label {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(9px, 0.7vw, 11px);
+  color: #ffd15c;
+  background: rgba(8, 8, 12, 0.78);
+  border: 1px solid rgba(255, 209, 92, 0.55);
+  padding: 3px 7px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+#speech-marker-arrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid rgba(255, 209, 92, 0.85);
+  transform-origin: 50% 0%;
+  /* Unrotated, this border trick already points straight down — the "at
+     rest" case (the speaker's on screen, right below the marker).
+     SpeechBubbleUI rotates it only once the marker's been clamped to a
+     screen edge, to aim off toward wherever the speaker actually is. */
+}
+
+/* off-screen: the label reads as "pointing toward them", not "standing over
+   them" — a touch of transparency helps sell that they're not actually here */
+#speech-marker.offscreen #speech-marker-label {
+  opacity: 0.88;
+}

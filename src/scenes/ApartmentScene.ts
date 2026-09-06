@@ -50,6 +50,8 @@ import { playDoorOpen } from "@/core/fx/doorAnim";
 import { ObjectiveGlow } from "@/core/fx/objectiveGlow";
 import { PropSize } from "@/gfx/props";
 import type { ObjectiveState } from "@/core/managers/ObjectiveManager";
+import { SpeakerRegistry } from "@/core/managers/SpeakerRegistry";
+import { PLAYER_NAME } from "@/config/constants";
 
 const DOG_PET_RANGE = 24;
 
@@ -186,6 +188,15 @@ export class ApartmentScene extends Phaser.Scene {
 
     EventBus.on(Events.OBJECTIVE_SET, this.onObjectiveSet);
 
+    SpeakerRegistry.set(
+      new Map([
+        [
+          PLAYER_NAME.toLowerCase(),
+          () => (this.player.visible ? worldToScreen(this.cameras.main, this.player.x, this.player.y - 18) : null),
+        ],
+      ]),
+    );
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.lighting.destroy();
       this.rain?.destroy();
@@ -195,6 +206,7 @@ export class ApartmentScene extends Phaser.Scene {
       EventBus.emit(Events.PROMPT_HIDE);
       EventBus.off(Events.OBJECTIVE_SET, this.onObjectiveSet);
       ObjectiveManager.clear();
+      SpeakerRegistry.set(null);
       for (const glow of this.objectiveGlows.values()) glow.destroy();
       this.objectiveGlows.clear();
     });

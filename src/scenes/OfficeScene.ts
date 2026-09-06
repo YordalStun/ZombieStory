@@ -54,6 +54,8 @@ import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { openComputer } from "@/ui/dom/ComputerUI";
 import { showPathChoice } from "@/ui/dom/PathChoiceUI";
+import { SpeakerRegistry } from "@/core/managers/SpeakerRegistry";
+import { PLAYER_NAME } from "@/config/constants";
 
 interface PropEntry {
   spec: PropSpec;
@@ -165,11 +167,23 @@ export class OfficeScene extends Phaser.Scene {
 
     this.setupInput();
 
+    const speakerMap = new Map<string, () => { x: number; y: number } | null>([
+      [PLAYER_NAME.toLowerCase(), () => (this.player.visible ? worldToScreen(this.cameras.main, this.player.x, this.player.y - 18) : null)],
+    ]);
+    for (const id of Object.keys(COWORKER_LINES)) {
+      speakerMap.set(id, () => {
+        const entry = this.coworkersById.get(id);
+        return entry ? worldToScreen(this.cameras.main, entry.sprite.x, entry.sprite.y - 20) : null;
+      });
+    }
+    SpeakerRegistry.set(speakerMap);
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.lighting.destroy();
       AudioManager.stopLoop("office_hum");
       EventBus.emit(Events.PROMPT_HIDE);
       ObjectiveManager.clear();
+      SpeakerRegistry.set(null);
     });
 
     void this.openingBeat(level);

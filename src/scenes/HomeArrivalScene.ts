@@ -27,6 +27,8 @@ import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { playDoorOpen } from "@/core/fx/doorAnim";
 import { ObjectiveGlow } from "@/core/fx/objectiveGlow";
 import { PropSize } from "@/gfx/props";
+import { SpeakerRegistry } from "@/core/managers/SpeakerRegistry";
+import { PLAYER_NAME } from "@/config/constants";
 
 interface PropEntry {
   spec: PropSpec;
@@ -119,10 +121,20 @@ export class HomeArrivalScene extends Phaser.Scene {
     this.cameras.main.setZoom(1.8);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
+    SpeakerRegistry.set(
+      new Map([
+        [
+          PLAYER_NAME.toLowerCase(),
+          () => (this.player.visible ? worldToScreen(this.cameras.main, this.player.x, this.player.y - 18) : null),
+        ],
+      ]),
+    );
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.lighting.destroy();
       EventBus.emit(Events.PROMPT_HIDE);
       ObjectiveManager.clear();
+      SpeakerRegistry.set(null);
       this.doorGlow?.destroy();
     });
 

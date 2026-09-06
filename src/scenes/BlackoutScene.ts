@@ -29,6 +29,9 @@ import { setHudVisible } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { createStreetCutscene, type StreetCutsceneHandle } from "@/gfx3d/streetCutscene";
 import { playPhoneFlash } from "@/ui/dom/PhoneFlashUI";
+import { SpeakerRegistry } from "@/core/managers/SpeakerRegistry";
+import { worldToScreen } from "@/ui/dom/UIRoot";
+import { PLAYER_NAME } from "@/config/constants";
 
 type FamilyId = "mum" | "dad" | "sister" | "brother";
 type Pos = { x: number; y: number };
@@ -61,6 +64,8 @@ const DANNY_LANDING_POS: Pos = { x: 245, y: 195 };
 const JACK_CHASE_EXIT_POS: Pos = { x: 460, y: 190 };
 
 const STREET_CUTSCENE_HOLD_MS = 6200;
+
+const FAMILY_DISPLAY_NAME: Record<FamilyId, string> = { mum: "mum", dad: "dad", sister: "lily", brother: "jack" };
 
 /** Turns a static Player instance to face a direction without moving it — setOutfit already refreshes the idle frame from .facing/.outfit, so re-calling it after changing .facing is the cheapest way to reuse that without a new export. */
 function face(sprite: Player, dir: Direction): void {
@@ -107,6 +112,20 @@ export class BlackoutScene extends Phaser.Scene {
     this.spawnFamily();
     this.buildLivingRoom();
     this.positionFamily(LIVING_ROOM_FAMILY_POS, DANNY_LIVING_ROOM_POS);
+
+    SpeakerRegistry.set(
+      new Map<string, () => { x: number; y: number } | null>([
+        [PLAYER_NAME.toLowerCase(), () => (this.danny.visible ? worldToScreen(this.cameras.main, this.danny.x, this.danny.y - 18) : null)],
+        ...(Object.keys(FAMILY_DISPLAY_NAME) as FamilyId[]).map((id): [string, () => { x: number; y: number } | null] => [
+          FAMILY_DISPLAY_NAME[id],
+          () => {
+            const sprite = this.familySprites.get(id);
+            return sprite?.visible ? worldToScreen(this.cameras.main, sprite.x, sprite.y - 18) : null;
+          },
+        ]),
+      ]),
+    );
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => SpeakerRegistry.set(null));
 
     void this.run();
   }

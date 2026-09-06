@@ -38,6 +38,8 @@ import { worldToScreen } from "@/ui/dom/UIRoot";
 import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { showEndSlate, hideMenu } from "@/ui/dom/MenuUI";
+import { SpeakerRegistry } from "@/core/managers/SpeakerRegistry";
+import { PLAYER_NAME } from "@/config/constants";
 
 type FloorId = "ground" | "upper";
 
@@ -110,6 +112,8 @@ export class HouseDefenseScene extends Phaser.Scene {
   private switchSprites = new Map<SwitchId, Phaser.GameObjects.Image>();
   private liveZombies: LiveZombie[] = [];
   private familyMembers: FamilyMemberController[] = [];
+  /** Keyed alongside familyMembers for SpeakerRegistry lookups — the plain array has no id on each controller to search by. */
+  private familyMembersById = new Map<FamilyMemberId, FamilyMemberController>();
   private zombieLastAttack = new Map<Zombie, number>();
   private focusedInteractable: string | null = null;
   /** Arcade colliders don't clean themselves up when a tilemap layer they reference is destroyed — a stale one left over from the previous floor crashes the physics step on its next update(). Tracked explicitly so loadFloor() can destroy every one of them before tearing down the geometry they point at. */
@@ -178,11 +182,27 @@ export class HouseDefenseScene extends Phaser.Scene {
     this.cameras.main.setZoom(1.8);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
+    SpeakerRegistry.set(
+      new Map<string, () => { x: number; y: number } | null>([
+        [PLAYER_NAME.toLowerCase(), () => (this.player.visible ? worldToScreen(this.cameras.main, this.player.x, this.player.y - 18) : null)],
+        ...(Object.entries(FAMILY_MEMBER_NAMES) as Array<[FamilyMemberId, string]>).map(
+          ([id, name]): [string, () => { x: number; y: number } | null] => [
+            name.toLowerCase(),
+            () => {
+              const fm = this.familyMembersById.get(id);
+              return fm ? worldToScreen(this.cameras.main, fm.x, fm.y - 18) : null;
+            },
+          ],
+        ),
+      ]),
+    );
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.lighting.destroy();
       EventBus.emit(Events.PROMPT_HIDE);
       ObjectiveManager.clear();
       AudioManager.stopMusic();
+      SpeakerRegistry.set(null);
     });
 
     void this.openingBeat();
@@ -224,6 +244,7 @@ export class HouseDefenseScene extends Phaser.Scene {
       this.liveZombies = [];
       for (const fm of this.familyMembers) fm.destroy();
       this.familyMembers = [];
+      this.familyMembersById.clear();
       for (const entry of this.propsById.values()) entry.sprite.destroy();
       this.propsById.clear();
       for (const spr of this.switchSprites.values()) spr.destroy();
@@ -440,6 +461,7 @@ export class HouseDefenseScene extends Phaser.Scene {
     );
     this.lighting.makeLit(controller.player);
     this.familyMembers.push(controller);
+    this.familyMembersById.set(sw.familyMemberId, controller);
   }
 
   private updateFamilyMembers(time: number, delta: number): void {

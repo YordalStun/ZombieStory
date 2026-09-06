@@ -32,6 +32,10 @@ export function initUIRoot(): HTMLDivElement {
       </div>
     </div>
     <div id="interact-prompt" class="hidden"></div>
+    <div id="speech-marker" class="hidden">
+      <div id="speech-marker-arrow"></div>
+      <div id="speech-marker-label"></div>
+    </div>
     <div id="dialogue-box" class="hidden">
       <div id="dialogue-speaker"></div>
       <div id="dialogue-text"></div>
