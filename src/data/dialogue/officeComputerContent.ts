@@ -22,7 +22,7 @@ export const EMAILS: ComputerEmail[] = [
     from: "Mum",
     fromAddress: "carol.reyes@fastmail.com",
     subject: "please call me when you get this",
-    date: "8:14 AM",
+    date: "8:14am",
     body: [
       "Danny, I don't know if you're seeing any of this at work but please call me the second you read this.",
       "The news is saying to stay off the roads into the city centre. Your father wants to drive in and get you but I told him to wait until we hear from you first.",
@@ -36,7 +36,7 @@ export const EMAILS: ComputerEmail[] = [
     from: "Dad",
     fromAddress: "greyes1962@outlook.com",
     subject: "come home when you can, don't wait around",
-    date: "8:31 AM",
+    date: "8:31am",
     body: [
       "Your mother's worried sick so I'll keep this short.",
       "If they send you home early, don't stop at the shop on the way, we've got enough here for a few days. Just come straight back.",
@@ -50,7 +50,7 @@ export const EMAILS: ComputerEmail[] = [
     from: "Jenna",
     fromAddress: "jennareyes94@gmail.com",
     subject: "it's here too",
-    date: "8:47 AM",
+    date: "8:47am",
     body: [
       "ok this isn't just a city thing, it's out by us now too. went to grab a few bits before work and half the shelves were already gone. attaching a pic, it's insane",
       "some bloke in the car park was just shouting at nobody. didn't stick around to find out why.",
@@ -64,7 +64,7 @@ export const EMAILS: ComputerEmail[] = [
     from: "Marcus",
     fromAddress: "marcus.odom@proton.me",
     subject: "you seeing this??",
-    date: "9:02 AM",
+    date: "9:02am",
     body: [
       "mate. MATE.",
       "I was walking to the bus stop and there's a whole crowd of people just standing in the middle of Fenwick Street, not moving, not talking. took a picture before I crossed the road to avoid them, look at this",
@@ -79,7 +79,7 @@ export const EMAILS: ComputerEmail[] = [
     from: "HR — Company Announcements",
     fromAddress: "no-reply@corp-announce.internal",
     subject: "Updated Flexible Working Policy — effective next quarter",
-    date: "Yesterday, 4:58 PM",
+    date: "Yesterday, 4:58pm",
     body: [
       "Hi all,",
       "As part of our ongoing commitment to flexibility, the updated flexible working policy will take effect next quarter. Please review the attached guidelines and complete the acknowledgement form by end of week.",
@@ -93,7 +93,7 @@ export const EMAILS: ComputerEmail[] = [
     from: "Calendar",
     fromAddress: "calendar@corp-announce.internal",
     subject: "Reminder: Team catch-up moved to 2pm",
-    date: "Yesterday, 9:00 AM",
+    date: "Yesterday, 9:00am",
     body: [
       "This is an automated reminder.",
       "\"Weekly team catch-up\" has been moved from 11:00am to 2:00pm today at the organiser's request.",
