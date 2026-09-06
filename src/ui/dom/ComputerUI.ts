@@ -1,6 +1,17 @@
-import { EMAILS, NEWS_ARTICLE, REQUIRED_EMAIL_IDS, type ComputerEmail } from "@/data/dialogue/officeComputerContent";
+import {
+  EMAILS,
+  NEWS_ARTICLE,
+  REQUIRED_EMAIL_IDS,
+  DOCUMENTS,
+  PERSONAL_PHOTOS,
+  PORTAL_ANNOUNCEMENT,
+  PORTAL_TILES,
+  type ComputerEmail,
+  type DesktopDocument,
+  type PersonalPhoto,
+} from "@/data/dialogue/officeComputerContent";
 import { AudioManager } from "@/core/managers/AudioManager";
-import { drawEmptyShelvesPhoto, drawStreetCrowdPhoto } from "@/ui/dom/emailArt";
+import { drawEmptyShelvesPhoto, drawStreetCrowdPhoto, drawLeavingDoPhoto, drawCatPhoto } from "@/ui/dom/emailArt";
 import * as compAudio from "@/ui/dom/ComputerAudio";
 
 export interface ComputerCallbacks {
@@ -20,6 +31,11 @@ const BOOT_LINES = [
 const EMAIL_ART: Record<"shelves" | "crowd", () => string> = {
   shelves: drawEmptyShelvesPhoto,
   crowd: drawStreetCrowdPhoto,
+};
+
+const PERSONAL_PHOTO_ART: Record<"leavingdo" | "cat", () => string> = {
+  leavingdo: drawLeavingDoPhoto,
+  cat: drawCatPhoto,
 };
 
 /** How far the rest of the game's audio ducks while the computer is open. */
@@ -104,15 +120,9 @@ function buildDesktopIcons(): void {
     { id: "mail", label: "Mail", glyph: "✉", onOpen: openMailApp },
     { id: "news", label: "Newsline", glyph: "🗞", onOpen: openNewsApp },
     { id: "dino", label: "Canyon Runner", glyph: "▶", onOpen: openDinoApp },
-    { id: "docs", label: "My Documents", glyph: "🗀", onOpen: () => openInertApp("My Documents", "This folder is empty."), inert: true },
-    { id: "photos", label: "Photos", glyph: "🖼", onOpen: () => openInertApp("Photos", "0 items."), inert: true },
-    {
-      id: "portal",
-      label: "Company Portal",
-      glyph: "⌂",
-      onOpen: () => openInertApp("Company Portal", "Connection failed.\n\nThe server could not be reached. Check your network connection and try again."),
-      inert: true,
-    },
+    { id: "docs", label: "My Documents", glyph: "🗀", onOpen: openDocumentsApp },
+    { id: "photos", label: "Photos", glyph: "🖼", onOpen: openPhotosApp },
+    { id: "portal", label: "Company Portal", glyph: "⌂", onOpen: openPortalApp },
     { id: "recycle", label: "Recycle Bin", glyph: "🗑", onOpen: () => openInertApp("Recycle Bin", "The Recycle Bin is empty."), inert: true },
   ];
 
@@ -298,6 +308,143 @@ function checkEmailsComplete(): void {
     emailsCompleted = true;
     callbacks?.onEmailsRead();
   }
+}
+
+// ----------------------------------------------------------- documents ----
+
+/** Not a dead end — a bit of ordinary desktop-clutter lore, same list+detail layout as Mail. */
+function openDocumentsApp(): void {
+  const body = openAppWindow("My Documents");
+  body.classList.add("computer-mail");
+
+  const list = document.createElement("div");
+  list.className = "computer-mail-list";
+  const detail = document.createElement("div");
+  detail.className = "computer-mail-detail";
+  body.appendChild(list);
+  body.appendChild(detail);
+
+  const renderDetail = (doc: DesktopDocument) => {
+    detail.replaceChildren();
+    const h = document.createElement("div");
+    h.className = "computer-mail-detail-header";
+    h.innerHTML = `<div class="computer-mail-detail-subject">${doc.name}</div>
+      <div class="computer-mail-detail-meta">Modified: ${doc.modified}</div>`;
+    detail.appendChild(h);
+    for (const para of doc.body) {
+      const p = document.createElement("p");
+      p.textContent = para;
+      detail.appendChild(p);
+    }
+  };
+
+  const renderList = (selected?: string) => {
+    list.replaceChildren();
+    for (const doc of DOCUMENTS) {
+      const row = document.createElement("button");
+      row.className = "computer-mail-row";
+      if (doc.id === selected) row.classList.add("read");
+      row.innerHTML = `<span class="computer-mail-from">${doc.name}</span><span class="computer-mail-date">${doc.modified}</span>`;
+      row.addEventListener("click", () => {
+        compAudio.playClick();
+        renderDetail(doc);
+        renderList(doc.id);
+      });
+      list.appendChild(row);
+    }
+  };
+
+  renderList(DOCUMENTS[0]?.id);
+  if (DOCUMENTS[0]) renderDetail(DOCUMENTS[0]);
+}
+
+// -------------------------------------------------------------- photos ----
+
+function openPhotosApp(): void {
+  const body = openAppWindow("Photos");
+  body.classList.add("computer-mail");
+
+  const list = document.createElement("div");
+  list.className = "computer-mail-list";
+  const detail = document.createElement("div");
+  detail.className = "computer-mail-detail";
+  body.appendChild(list);
+  body.appendChild(detail);
+
+  const renderDetail = (photo: PersonalPhoto) => {
+    detail.replaceChildren();
+    const wrap = document.createElement("div");
+    wrap.className = "computer-mail-photo";
+    const img = document.createElement("img");
+    img.className = "computer-mail-photo-img";
+    img.src = PERSONAL_PHOTO_ART[photo.art]();
+    img.alt = photo.caption;
+    const cap = document.createElement("div");
+    cap.className = "computer-mail-photo-caption";
+    cap.textContent = `${photo.name} — ${photo.caption}`;
+    wrap.appendChild(img);
+    wrap.appendChild(cap);
+    detail.appendChild(wrap);
+  };
+
+  const renderList = (selected?: string) => {
+    list.replaceChildren();
+    for (const photo of PERSONAL_PHOTOS) {
+      const row = document.createElement("button");
+      row.className = "computer-mail-row";
+      if (photo.id === selected) row.classList.add("read");
+      row.innerHTML = `<span class="computer-mail-from">${photo.name}</span>`;
+      row.addEventListener("click", () => {
+        compAudio.playClick();
+        renderDetail(photo);
+        renderList(photo.id);
+      });
+      list.appendChild(row);
+    }
+  };
+
+  renderList(PERSONAL_PHOTOS[0]?.id);
+  if (PERSONAL_PHOTOS[0]) renderDetail(PERSONAL_PHOTOS[0]);
+}
+
+// -------------------------------------------------------------- portal ----
+
+/** The one deliberately funny app: a boss who does not want anyone leaving, dressed up as company culture. */
+function openPortalApp(): void {
+  const body = openAppWindow("Company Portal");
+  body.classList.add("computer-portal");
+
+  const banner = document.createElement("div");
+  banner.className = "computer-portal-banner";
+  banner.innerHTML = `<div class="computer-portal-headline">${PORTAL_ANNOUNCEMENT.headline}</div>
+    <div class="computer-portal-from">${PORTAL_ANNOUNCEMENT.from}</div>`;
+  body.appendChild(banner);
+
+  for (const para of PORTAL_ANNOUNCEMENT.body) {
+    const p = document.createElement("p");
+    p.className = "computer-portal-para";
+    p.textContent = para;
+    body.appendChild(p);
+  }
+
+  const tiles = document.createElement("div");
+  tiles.className = "computer-portal-tiles";
+  const messageEl = document.createElement("div");
+  messageEl.className = "computer-portal-message hidden";
+
+  for (const tile of PORTAL_TILES) {
+    const btn = document.createElement("button");
+    btn.className = "computer-portal-tile";
+    btn.textContent = tile.label;
+    btn.addEventListener("click", () => {
+      compAudio.playClick();
+      messageEl.textContent = tile.message;
+      messageEl.classList.remove("hidden");
+    });
+    tiles.appendChild(btn);
+  }
+  body.appendChild(tiles);
+  body.appendChild(messageEl);
 }
 
 // ---------------------------------------------------------------- news ----

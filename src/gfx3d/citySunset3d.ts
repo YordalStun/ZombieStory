@@ -167,6 +167,40 @@ export function createCitySunset3D(): CitySunset3DHandle {
   const halo = new THREE.Mesh(new THREE.CircleGeometry(5, 16), new THREE.MeshBasicMaterial({ color: SKY_STOPS[0].sun, transparent: true, opacity: 0.25 }));
   scene.add(halo);
 
+  // the rooftop itself — without this there was nothing but the sky colour
+  // filling the lower half of frame under the skyline, which read as
+  // floating in a void rather than standing somewhere. A flat roof surface
+  // plus a low parapet ledge at the near edge is enough to sell "we're
+  // standing on a roof looking out," not staring off the edge of the world.
+  const roof = new THREE.Mesh(
+    new THREE.PlaneGeometry(220, 220),
+    new THREE.MeshStandardMaterial({ color: 0x26241f, roughness: 1 }),
+  );
+  roof.rotation.x = -Math.PI / 2;
+  roof.position.set(0, 7.3, -10);
+  scene.add(roof);
+
+  const parapet = new THREE.Mesh(
+    new THREE.BoxGeometry(220, 0.7, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x1c1a16, roughness: 1 }),
+  );
+  parapet.position.set(0, 7.65, 15.5);
+  scene.add(parapet);
+
+  // a couple of rooftop vents/units breaking up the flat surface near the
+  // camera, so the roof itself reads as a real place, not just a plane
+  for (const [vx, vz] of [
+    [-6, 10],
+    [5, 8],
+  ] as const) {
+    const vent = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0x35322c, roughness: 1 }),
+    );
+    vent.position.set(vx, 7.3 + 0.5, vz);
+    scene.add(vent);
+  }
+
   const windows: WindowLight[] = [];
   const near: Array<{ x: number; z: number }> = [];
   for (let i = 0; i < 42; i++) {

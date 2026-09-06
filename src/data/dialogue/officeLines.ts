@@ -66,13 +66,26 @@ export const WATER_COOLER_LINES: DialogueScript = [
   { speaker: PLAYER_NAME, text: "Same water cooler, same lukewarm cup. At least something's normal." },
 ];
 
-/** First proximity trigger — the whole room's attention, escalating past everything the radio covered on the drive in. */
-export const OFFICE_BROADCAST_LINES: DialogueScript = [
+/**
+ * First proximity trigger — the whole room's attention, escalating past
+ * everything the radio covered on the drive in. Split in three so the
+ * scene can cut away from the TV close-up back to the office itself for
+ * the postcode beat (see OfficeScene.triggerBroadcast) — the line landed
+ * as a name with no face when it only ever played over the anchor's own
+ * close-up, since the player never actually saw anyone react to it.
+ */
+export const OFFICE_BROADCAST_PART1_LINES: DialogueScript = [
   { speaker: "News Anchor", text: "—and we're now getting confirmation that three more hospital trusts have declared a critical incident this morning." },
   { speaker: "News Anchor", text: "The Department of Health says the public should remain calm and avoid emergency departments unless absolutely necessary." },
   { speaker: "News Anchor", text: "Several schools across the region have announced they will not reopen after this morning's drop-off." },
   { speaker: "News Anchor", text: "Police are asking residents in the following postcodes to stay indoors while, quote, 'ongoing incidents' are resolved." },
+];
+
+export const OFFICE_POSTCODE_REACTION_LINES: DialogueScript = [
   { speaker: "Coworker", text: "That's my mum's postcode. That's my mum's actual postcode." },
+];
+
+export const OFFICE_BROADCAST_PART2_LINES: DialogueScript = [
   { speaker: "News Anchor", text: "We're being told to cross now to our reporter at—" },
   { speaker: "News Anchor", text: "—I'm sorry, we seem to have lost that signal. We'll return to it as soon as—" },
   { speaker: "News Anchor", text: "One moment. One moment, please." },

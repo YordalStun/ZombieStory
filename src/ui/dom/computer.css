@@ -553,3 +553,71 @@
   font-size: clamp(11px, 1vw, 13px);
   color: #55503f;
 }
+
+/* ---- Company Portal — corporate-intranet blue, the one openly funny app ---- */
+
+.computer-portal {
+  display: block !important;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.computer-portal-banner {
+  background: #1c3a52;
+  color: #f0ece2;
+  padding: 10px 14px;
+  margin: -16px -20px 12px;
+}
+
+.computer-portal-headline {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(11px, 1.15vw, 14px);
+  line-height: 1.5;
+}
+
+.computer-portal-from {
+  font-family: "VT323", monospace;
+  font-size: clamp(11px, 1vw, 13px);
+  color: #9ac0d8;
+  margin-top: 4px;
+}
+
+.computer-portal-para {
+  margin: 0 0 8px;
+  color: #24261f;
+}
+
+.computer-portal-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.computer-portal-tile {
+  font-family: "VT323", monospace;
+  font-size: clamp(13px, 1.2vw, 16px);
+  background: #dfe8ee;
+  border: 1px solid #7a97a8;
+  color: #1c3a52;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.computer-portal-tile:hover {
+  background: #cddce4;
+}
+
+.computer-portal-message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #f0ece2;
+  border: 1px dashed #8a8578;
+  color: #55503f;
+  white-space: pre-line;
+}
+
+.computer-portal-message.hidden {
+  display: none;
+}

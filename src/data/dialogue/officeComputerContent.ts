@@ -114,6 +114,115 @@ export interface NewsArticle {
   sidebar: string[];
 }
 
+/** My Documents — a bit of lore rather than a dead end: the odds and ends anyone's desktop actually accumulates. */
+export interface DesktopDocument {
+  id: string;
+  name: string;
+  modified: string;
+  body: string[];
+}
+
+export const DOCUMENTS: DesktopDocument[] = [
+  {
+    id: "cv",
+    name: "CV_Danny_Reyes_FINAL_v3.docx",
+    modified: "3 months ago",
+    body: [
+      "Danny Reyes",
+      "Objective: seeking a role offering genuine growth opportunities and a healthy work-life balance.",
+      "(Never actually sent anywhere. Still saved here, just in case.)",
+    ],
+  },
+  {
+    id: "flatshare",
+    name: "flatshare rules (do not lose).txt",
+    modified: "8 months ago",
+    body: [
+      "1. Bins go out Tuesday night, not Wednesday morning. We've been over this, Jenna.",
+      "2. Whoever finishes the milk buys the milk. No exceptions.",
+      "3. We are not getting a cat.",
+      "(Update, six weeks later: we have a cat.)",
+    ],
+  },
+  {
+    id: "expenses",
+    name: "expenses_march.xlsx",
+    modified: "2 weeks ago",
+    body: [
+      "Train ticket — £14.20",
+      "Lunch (client meeting that got cancelled — ate the sandwich anyway) — £4.50",
+      "Status: Pending approval.",
+      "Status, two weeks later: still pending approval.",
+    ],
+  },
+  {
+    id: "notes",
+    name: "meeting notes — do not delete.txt",
+    modified: "Yesterday",
+    body: [
+      "- follow up with Priya re: Q3 numbers",
+      "- find out if Ben's deadline is real or if he's just saying that",
+      "- birthday card for Sam, everyone chip in a fiver",
+      "- ask Mark if he's actually read the report or just carrying it around",
+    ],
+  },
+];
+
+/** Photos — Danny's own camera roll, not evidence photos like the email attachments. */
+export interface PersonalPhoto {
+  id: string;
+  name: string;
+  caption: string;
+  art: "leavingdo" | "cat";
+}
+
+export const PERSONAL_PHOTOS: PersonalPhoto[] = [
+  { id: "leavingdo", name: "IMG_0301.jpg", caption: "Sam's leaving do. The good pub, not the one by the station.", art: "leavingdo" },
+  { id: "cat", name: "IMG_0355.jpg", caption: "The cat. Profoundly unbothered, as ever.", art: "cat" },
+];
+
+/** Company Portal — the one place this game gets to be openly funny: a boss who does not want anyone leaving, dressed up as "culture." */
+export const PORTAL_ANNOUNCEMENT = {
+  from: "Gary Instone — Regional Director",
+  headline: "A Message From Gary: We're Like a Family Here",
+  body: [
+    "Morning team!",
+    "Reaching out personally (via the Portal — my door is always open, metaphorically, the actual door sticks) to say: this is a WORKPLACE FAMILY, and families don't just leave each other.",
+    "I've noticed a few of you have been \"checking the news\" this morning. Totally understand! But worth remembering we've still got the Q3 numbers due — and nothing says team spirit like pushing through a tricky morning together.",
+    "Anyway. Chin up! Nobody's going anywhere. Ha. Anyway.",
+    "— Gary",
+  ],
+};
+
+export interface PortalTile {
+  id: string;
+  label: string;
+  message: string;
+}
+
+export const PORTAL_TILES: PortalTile[] = [
+  {
+    id: "wellness",
+    label: "Wellness Hub",
+    message: "Feeling stressed? Try our 4-minute guided breathing exercise, recorded by Gary personally.\n\n(Recording currently unavailable. Please try again during your unpaid lunch break.)",
+  },
+  {
+    id: "retention",
+    label: "Employee Pulse Survey",
+    message: "\"On a scale of 1-10, how likely are you to still be here this time next year?\"\n\nYour answer has been recorded and shared with your line manager. Thanks for your honesty!",
+  },
+  {
+    id: "exit",
+    label: "Exit Interview Scheduler",
+    message: "This page is temporarily unavailable while we review team resourcing.\n\nPlease speak to Gary directly. Gary would like that.",
+  },
+  {
+    id: "fun",
+    label: "Team Fun Corner",
+    message: "Friday is BAKE-OFF FRIDAY! (Mandatory. Unpaid. Bring your own ingredients.)\n\nGary's banana bread will not be judged this week, following \"the incident.\"",
+  },
+];
+
 export const NEWS_ARTICLE: NewsArticle = {
   kicker: "BREAKING NEWS",
   headline: "Residents Told to Stay Indoors Amid Growing Reports of Violent Incidents",

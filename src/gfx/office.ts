@@ -331,15 +331,27 @@ export function generateOfficeTextures(scene: Phaser.Scene): void {
   });
 
   // TV-broadcast cutaway — a "mid shot" of the newsroom, held behind the
-  // dialogue box for the length of the office TV broadcast. Studio
-  // backdrop, an anchor bust at a desk, a breaking-news banner, faint
-  // scanlines for a broadcast (not in-person) feel.
+  // dialogue box for the length of the office TV broadcast. Styled after
+  // the familiar red-sofa breakfast-news look (warm red set rather than a
+  // cool blue desk, two presenters side by side, not one anchor alone) —
+  // the most recognisable "this is the telly, first thing in the morning"
+  // shorthand — plus a breaking-news banner and a channel bug.
   drawFull(scene, OfficeTex.TV_BROADCAST_SCREEN, GAME_WIDTH, GAME_HEIGHT, (ctx, w, h) => {
-    // studio backdrop
-    rect(ctx, 0, 0, w, h, 0x141b28);
-    rect(ctx, 0, 0, w, h * 0.55, 0x1c2740);
-    for (let x = 0; x < w; x += 34) rect(ctx, x, 0, 1, h * 0.55, 0x24304f);
-    rect(ctx, 0, h * 0.42, w, 3, 0x2e3d5e);
+    // warm red studio backdrop
+    rect(ctx, 0, 0, w, h, 0x2a0e0e);
+    rect(ctx, 0, 0, w, h * 0.55, 0x7a1f1f);
+    for (let x = 0; x < w; x += 34) rect(ctx, x, 0, 1, h * 0.55, 0x8f2a2a);
+    rect(ctx, 0, h * 0.42, w, 3, 0x5c1717);
+
+    // channel bug, top-left — a plain red disc rather than a real logo
+    ctx.fillStyle = "#e0e0e0";
+    ctx.beginPath();
+    ctx.ellipse(26, 20, 12, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#a01e1e";
+    ctx.beginPath();
+    ctx.ellipse(26, 20, 8, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // breaking-news banner
     const bannerY = h * 0.46;
@@ -355,21 +367,27 @@ export function generateOfficeTextures(scene: Phaser.Scene): void {
     ctx.fill();
     rect(ctx, w - 46, 14, 30, 8, 0xf0e8e0);
 
-    // anchor desk + bust, bottom half
-    const deskY = h * 0.66;
-    rect(ctx, 0, deskY, w, h - deskY, 0x1a2030);
-    rect(ctx, w * 0.5 - 90, deskY - 4, 180, 8, 0x2c3450);
-    // shoulders/suit
-    rect(ctx, w / 2 - 46, deskY - 60, 92, 60, 0x2a3346);
-    rect(ctx, w / 2 - 46, deskY - 60, 92, 10, 0x33405a);
-    // shirt/tie hint
-    rect(ctx, w / 2 - 10, deskY - 60, 20, 40, 0xe8e4da);
-    rect(ctx, w / 2 - 4, deskY - 60, 8, 40, 0xa01e1e);
-    // head
-    rect(ctx, w / 2 - 16, deskY - 92, 32, 34, 0xd8a878);
-    rect(ctx, w / 2 - 16, deskY - 92, 32, 10, 0x2a2018);
-    rect(ctx, w / 2 - 8, deskY - 76, 3, 3, 0x1a1a1a);
-    rect(ctx, w / 2 + 5, deskY - 76, 3, 3, 0x1a1a1a);
+    // the sofa, bottom half, two presenters side by side rather than one
+    // anchor at a desk
+    const sofaY = h * 0.66;
+    rect(ctx, 0, sofaY, w, h - sofaY, 0x8a2222);
+    rect(ctx, 0, sofaY, w, 6, 0xa53030);
+    rect(ctx, w * 0.5 - 100, sofaY - 6, 200, 10, 0x6e1c1c); // low table in front
+
+    const presenter = (cx: number) => {
+      // shoulders/jacket
+      rect(ctx, cx - 34, sofaY - 54, 68, 54, 0x24242c);
+      rect(ctx, cx - 34, sofaY - 54, 68, 9, 0x2c2c36);
+      // shirt
+      rect(ctx, cx - 8, sofaY - 54, 16, 34, 0xe8e4da);
+      // head
+      rect(ctx, cx - 13, sofaY - 84, 26, 30, 0xd8a878);
+      rect(ctx, cx - 13, sofaY - 84, 26, 9, 0x2a2018);
+      rect(ctx, cx - 7, sofaY - 70, 3, 3, 0x1a1a1a);
+      rect(ctx, cx + 4, sofaY - 70, 3, 3, 0x1a1a1a);
+    };
+    presenter(w / 2 - 40);
+    presenter(w / 2 + 40);
   });
 
   // exactly half the screen wide, so a closed pair (the second flipped) meets

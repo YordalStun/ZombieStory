@@ -96,3 +96,49 @@ export function drawStreetCrowdPhoto(): string {
     }
   });
 }
+
+/** A personal photo from Danny's own camera roll: Sam's leaving do, warm pub lighting, pints raised. */
+export function drawLeavingDoPhoto(): string {
+  return toDataUrl(80, 48, (ctx) => {
+    rect(ctx, 0, 0, 80, 48, 0x3a2a1e); // dim pub interior
+    rect(ctx, 0, 30, 80, 18, 0x2a1e16); // bar-top shadow band
+    // warm string lights along the top
+    for (let x = 4; x < 80; x += 8) px(ctx, x, 4, 0xe8c878);
+    // a knot of people, pint glasses raised — a bright glint on each glass
+    // so it reads as mid-toast, not just standing around
+    const people: Array<[number, number]> = [
+      [14, 20],
+      [26, 18],
+      [38, 21],
+      [50, 17],
+      [62, 20],
+    ];
+    for (const [gx, gy] of people) {
+      rect(ctx, gx, gy, 6, 14, 0x1c140e); // body
+      rect(ctx, gx + 1, gy - 4, 4, 4, 0xc79a72); // head
+      rect(ctx, gx + 6, gy - 2, 2, 5, 0xd8c090); // raised pint glass
+      px(ctx, gx + 6, gy - 3, 0xe8b830); // glint of beer
+    }
+    rect(ctx, 0, 38, 80, 10, 0x5a4230); // the bar
+    rect(ctx, 0, 38, 80, 2, 0x7a5c40);
+  });
+}
+
+/** A personal photo from Danny's own camera roll: the cat, deeply unbothered, on the windowsill. */
+export function drawCatPhoto(): string {
+  return toDataUrl(80, 48, (ctx) => {
+    rect(ctx, 0, 0, 80, 48, 0xb8c8d0); // daylight through the window
+    rect(ctx, 0, 30, 80, 18, 0xa8926c); // windowsill
+    outline(ctx, 0, 30, 80, 18, 0x8a7452);
+    ctx.fillStyle = hex(0x5a5a62);
+    ctx.beginPath();
+    ctx.ellipse(38, 24, 20, 12, 0, 0, Math.PI * 2);
+    ctx.fill(); // curled body
+    rect(ctx, 20, 10, 8, 8, 0x5a5a62); // head
+    rect(ctx, 20, 6, 3, 5, 0x5a5a62); // ear
+    rect(ctx, 25, 6, 3, 5, 0x4a4a52); // ear, folded — deeply unimpressed
+    px(ctx, 22, 13, 0xd8e0a0);
+    px(ctx, 25, 13, 0xd8e0a0);
+    rect(ctx, 50, 22, 14, 3, 0x4a4a52); // tail, wrapped round
+  });
+}

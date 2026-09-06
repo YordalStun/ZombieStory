@@ -29,7 +29,9 @@ import {
   CHRIS_LINES,
   PRINTER_LINES,
   WATER_COOLER_LINES,
-  OFFICE_BROADCAST_LINES,
+  OFFICE_BROADCAST_PART1_LINES,
+  OFFICE_POSTCODE_REACTION_LINES,
+  OFFICE_BROADCAST_PART2_LINES,
   TV_REPEAT_LINES,
   LOBBY_LINES,
   FIND_DESK_LINES,
@@ -589,7 +591,40 @@ export class OfficeScene extends Phaser.Scene {
       .setDepth(100000);
     await fadeIn(500);
 
-    await DialoguePlayer.playAuto(OFFICE_BROADCAST_LINES);
+    await DialoguePlayer.playAuto(OFFICE_BROADCAST_PART1_LINES);
+
+    // Cut back to the office itself for this one line — it used to land as
+    // a name with no face, still playing over the anchor's own close-up.
+    await fadeOut(400);
+    screen.setVisible(false);
+    this.cameras.main.setZoom(worldZoom);
+    const reactX = this.player.x - 30;
+    const reactY = this.player.y + 8;
+    const reactor = this.add.image(reactX, reactY, CoworkerTex.STAND_C).setDepth(DEPTH.ACTOR_SORT_BASE + reactY);
+    this.lighting.makeLit(reactor);
+    await fadeIn(400);
+
+    await DialoguePlayer.play(OFFICE_POSTCODE_REACTION_LINES);
+    await new Promise<void>((resolve) => {
+      this.tweens.add({
+        targets: reactor,
+        x: reactX - 50,
+        y: reactY + 30,
+        alpha: 0,
+        duration: 600,
+        ease: "Sine.easeIn",
+        onComplete: () => resolve(),
+      });
+    });
+    AudioManager.playSfx(SfxKey.FOOTSTEP, { volume: 0.6, rate: 1.4 });
+    reactor.destroy();
+
+    await fadeOut(400);
+    screen.setVisible(true);
+    this.cameras.main.setZoom(1);
+    await fadeIn(400);
+
+    await DialoguePlayer.playAuto(OFFICE_BROADCAST_PART2_LINES);
 
     await fadeOut(500);
     screen.destroy();
