@@ -173,6 +173,9 @@ export class ReturnDriveScene extends Phaser.Scene {
   private brokenDown = false;
   private obstacles: RoadObstacle[] = [];
   private decor: ScrollingDecor[] = [];
+  /** True while the car's overlapping an unresolved obstacle in its own lane — blocks further progress until the player actually steers clear, rather than just costing speed and driving straight through. */
+  private blocked = false;
+  private zombieGroanTimer = 0;
 
   constructor() {
     super(SceneKeys.RETURN_DRIVE);
@@ -184,6 +187,8 @@ export class ReturnDriveScene extends Phaser.Scene {
     this.distance = 0;
     this.busy = true;
     this.brokenDown = false;
+    this.blocked = false;
+    this.zombieGroanTimer = 1500;
     this.obstacles = OBSTACLE_PLAN.map((o) => ({
       distance: o.distance,
       laneX: ROAD_X + o.lane * LANE_OFFSET,
@@ -197,12 +202,16 @@ export class ReturnDriveScene extends Phaser.Scene {
   create(): void {
     setFadeInstant(true);
     setHudVisible(false);
-    this.cameras.main.setBackgroundColor(0x2f3a26);
+    // it's evening now, not broad daylight — darker ground colour plus a
+    // translucent dusk overlay over everything (road, decor, car alike)
+    // rather than just the empty background colour
+    this.cameras.main.setBackgroundColor(0x151b12);
 
     this.road = this.add
       .tileSprite(ROAD_X, GAME_HEIGHT / 2, ROAD_TILE_SIZE.w, GAME_HEIGHT, ReturnDriveTex.ROAD_TILE)
       .setDepth(1);
     this.car = this.add.image(this.carX, CAR_Y, PropTex.CAR).setDepth(5).setScale(0.85);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0c1428, 0.32).setDepth(7).setScrollFactor(0);
 
     this.speedText = this.add
       .text(10, GAME_HEIGHT - 20, "", { fontFamily: "monospace", fontSize: "12px", color: "#f0ece2" })
@@ -258,17 +267,38 @@ export class ReturnDriveScene extends Phaser.Scene {
     if (this.cursors.up.isDown || this.wasdUp.isDown) this.speed = Math.min(MAX_SPEED, this.speed + 70 * dt);
     if (this.cursors.down.isDown || this.wasdDown.isDown) this.speed = Math.max(MIN_SPEED, this.speed - 70 * dt);
 
-    this.distance += this.speed * dt;
     this.updateObstacles();
     this.updateDecor();
+    this.updateZombieNoise(delta);
+
+    // Blocked means still overlapping something in-lane right now — real
+    // obstacles you have to actually steer clear of, not just a speed
+    // penalty you can drive straight through. Progress (and speed) stalls
+    // until the player moves to a clear lane.
+    if (this.blocked) {
+      this.speed = Math.max(MIN_SPEED * 0.35, this.speed - 140 * dt);
+    } else {
+      this.distance += this.speed * dt;
+    }
 
     if (this.distance >= BREAKDOWN_DISTANCE) {
       void this.beginBreakdown();
     }
   }
 
+  /** Ambient groans from whichever roadside zombie is currently on screen — the drive used to be dead silent between hits. */
+  private updateZombieNoise(delta: number): void {
+    this.zombieGroanTimer -= delta;
+    if (this.zombieGroanTimer > 0) return;
+    this.zombieGroanTimer = 3200 + Math.random() * 2600;
+
+    const visible = this.decor.some((d) => d.tex === FigureTex.ZOMBIE && !d.resolved && d.img && d.img.y > -40 && d.img.y < GAME_HEIGHT + 40);
+    if (visible) AudioManager.playSfx(SfxKey.GROAN, { volume: 0.22, rate: 0.8 + Math.random() * 0.3 });
+  }
+
   /** Each obstacle's screen Y is driven purely by (its target distance minus distance travelled), so it scrolls in perfect sync with the road tile without needing its own tween. */
   private updateObstacles(): void {
+    let blockedNow = false;
     for (const ob of this.obstacles) {
       if (ob.resolved) continue;
       const y = CAR_Y - (ob.distance - this.distance);
@@ -285,9 +315,13 @@ export class ReturnDriveScene extends Phaser.Scene {
       }
       ob.img.y = y;
 
-      if (!ob.hit && Math.abs(y - CAR_Y) < 14 && Math.abs(ob.laneX - this.carX) < 22) {
-        ob.hit = true;
-        this.onObstacleHit();
+      const overlapping = Math.abs(y - CAR_Y) < 16 && Math.abs(ob.laneX - this.carX) < 24;
+      if (overlapping) {
+        blockedNow = true;
+        if (!ob.hit) {
+          ob.hit = true;
+          this.onObstacleHit();
+        }
       }
 
       if (y > GAME_HEIGHT + 40) {
@@ -295,6 +329,7 @@ export class ReturnDriveScene extends Phaser.Scene {
         ob.resolved = true;
       }
     }
+    this.blocked = blockedNow;
   }
 
   /**
@@ -395,10 +430,14 @@ export class ReturnDriveScene extends Phaser.Scene {
 
     await this.say(PHONE_NO_SIGNAL_LINES);
 
+    // "no signal" jostling — scaling down slightly along with the tilt lets
+    // the real scene peek in at the edges each time it snaps back, instead
+    // of the full-screen phone shot just rocking in place over nothing
     await new Promise<void>((resolve) => {
       this.tweens.add({
         targets: phone,
         angle: { from: -4, to: 4 },
+        scale: { from: 0.94, to: 1 },
         duration: 260,
         yoyo: true,
         repeat: 3,

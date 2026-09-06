@@ -344,27 +344,39 @@ export function createDriveCutscene(): DriveCutsceneHandle {
 // Phase 2: exterior crash
 // ---------------------------------------------------------------------------
 
+/**
+ * Dad's car — deliberately not Danny's. Danny's own PropTex.CAR (see
+ * gfx/props.ts / Palette.carBody) is a dark red saloon; this is a boxier
+ * steel-blue estate with a roof rack, both a different colour and a
+ * different silhouette (taller cabin, longer rear overhang) so it doesn't
+ * read as the same car turning up twice.
+ */
 function buildCar(): THREE.Group {
   const g = new THREE.Group();
-  const paint = new THREE.MeshStandardMaterial({ color: 0x8a1f2b, roughness: 0.5, metalness: 0.2 });
+  const paint = new THREE.MeshStandardMaterial({ color: 0x3a4a5c, roughness: 0.6, metalness: 0.15 });
   const glass = new THREE.MeshStandardMaterial({ color: 0x8fa8c0, roughness: 0.2, metalness: 0.4 });
-  const body = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.7, 1.6), paint);
-  body.position.y = 0.55;
+  const trim = new THREE.MeshStandardMaterial({ color: 0x1c1e22, roughness: 0.8 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.75, 1.65), paint);
+  body.position.y = 0.58;
   g.add(body);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.55, 1.4), glass);
-  cabin.position.set(-0.2, 1.05, 0);
+  // estate-length cabin, roof running further back than a saloon's would
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.62, 1.45), glass);
+  cabin.position.set(-0.3, 1.12, 0);
   g.add(cabin);
-  const wheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.28, 10);
+  const roofRack = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 1.5), trim);
+  roofRack.position.set(-0.3, 1.46, 0);
+  g.add(roofRack);
+  const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 10);
   const wheelMat = new THREE.MeshStandardMaterial({ color: 0x0e0e10, roughness: 0.9 });
   for (const [wx, wz] of [
-    [1.3, 0.75],
-    [1.3, -0.75],
-    [-1.3, 0.75],
-    [-1.3, -0.75],
+    [1.4, 0.78],
+    [1.4, -0.78],
+    [-1.4, 0.78],
+    [-1.4, -0.78],
   ] as const) {
     const wheel = new THREE.Mesh(wheelGeo, wheelMat);
     wheel.rotation.z = Math.PI / 2;
-    wheel.position.set(wx, 0.3, wz);
+    wheel.position.set(wx, 0.32, wz);
     g.add(wheel);
   }
   return g;
@@ -420,7 +432,11 @@ export function createCrashCutscene(onImpact?: () => void): CrashCutsceneHandle 
   }
 
   const car = buildCar();
-  car.rotation.y = Math.PI / 2;
+  // Previously rotated 90° here, which pointed the car's own length axis
+  // across its direction of travel — it visibly drove in sideways rather
+  // than nose-first, since it moves along world X and the unrotated body's
+  // long axis already runs along local X (its front faces +X, matching the
+  // direction from startX toward impactX below).
   const startX = -13;
   const impactX = -0.4;
   car.position.set(startX, 0, 2.4);

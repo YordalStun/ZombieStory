@@ -55,6 +55,7 @@ export class LeaveBuildingScene extends Phaser.Scene {
   private zombieSeen = false;
   private gatewaySeen = false;
   private dadShouted = false;
+  private zombieGroanTimer = 1200;
 
   constructor() {
     super(SceneKeys.LEAVE_BUILDING);
@@ -196,6 +197,15 @@ export class LeaveBuildingScene extends Phaser.Scene {
     this.updateInteractionFocus();
 
     const distToZombie = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.zombie.x, this.zombie.y);
+
+    // a "dormant, does nothing" obstacle used to also be dead silent —
+    // an occasional groan while it's nearby sells "still technically alive"
+    // without it actually waking up and chasing
+    this.zombieGroanTimer -= delta;
+    if (this.zombieGroanTimer <= 0) {
+      this.zombieGroanTimer = 3500 + Math.random() * 3000;
+      if (distToZombie < 130) AudioManager.playSfx(SfxKey.GROAN, { volume: 0.2, rate: 0.75 + Math.random() * 0.3 });
+    }
 
     if (!this.zombieSeen && distToZombie < 60) {
       this.zombieSeen = true;

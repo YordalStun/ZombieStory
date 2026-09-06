@@ -32,6 +32,7 @@ export function initUIRoot(): HTMLDivElement {
       </div>
     </div>
     <div id="interact-prompt" class="hidden"></div>
+    <div id="swing-hint" class="hidden"><span class="prompt-keycap">F</span><span class="prompt-label">Swing</span></div>
     <div id="speech-marker" class="hidden">
       <div id="speech-marker-arrow"></div>
       <div id="speech-marker-label"></div>

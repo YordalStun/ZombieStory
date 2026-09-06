@@ -35,7 +35,7 @@ import {
 } from "@/data/dialogue/houseDefenseLines";
 import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
-import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
+import { setHudVisible, setSwingHintVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { showEndSlate, hideMenu } from "@/ui/dom/MenuUI";
 import { SpeakerRegistry } from "@/core/managers/SpeakerRegistry";
@@ -203,6 +203,7 @@ export class HouseDefenseScene extends Phaser.Scene {
       ObjectiveManager.clear();
       AudioManager.stopMusic();
       SpeakerRegistry.set(null);
+      setSwingHintVisible(false);
     });
 
     void this.openingBeat();
@@ -611,6 +612,7 @@ export class HouseDefenseScene extends Phaser.Scene {
 
     const equippedWeapon = WeaponManager.getEquipped();
     updateHeldWeapon(this, this.player, equippedWeapon);
+    setSwingHintVisible(!!equippedWeapon && this.player.areControlsEnabled());
 
     if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && equippedWeapon) {
       swingWeapon(

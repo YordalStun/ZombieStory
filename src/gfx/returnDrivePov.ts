@@ -27,8 +27,13 @@ function draw(
 
 export function generateReturnDrivePovTextures(scene: Phaser.Scene): void {
   draw(scene, PovTex.PHONE, (ctx, w, h) => {
-    rect(ctx, 0, 0, w, h, 0x14161c);
-    speckle(ctx, 0, 0, w, h, 0x1c1f28, 60, 7);
+    // he's standing on the verge, not indoors — the grass behind the phone
+    // (same tone as the dirt-path shot's own verge) rather than a flat
+    // dark room fill, so it actually reads as "outside, by the car"
+    rect(ctx, 0, 0, w, h * 0.55, 0x3a3f2c);
+    speckle(ctx, 0, 0, w, h * 0.55, 0x333726, 50, 13);
+    rect(ctx, 0, h * 0.5, w, h * 0.5, 0x2f3a26);
+    speckle(ctx, 0, h * 0.5, w, h * 0.5, 0x263019, 90, 9);
     // hand, bottom-center, holding the phone up toward "camera"
     rect(ctx, w / 2 - 60, h - 70, 120, 70, 0xb98a63);
     rect(ctx, w / 2 - 60, h - 70, 120, 10, 0xa5754f);

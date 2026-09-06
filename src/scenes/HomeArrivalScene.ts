@@ -22,7 +22,7 @@ import {
 } from "@/data/dialogue/homeArrivalLines";
 import { EventBus, Events } from "@/core/EventBus";
 import { worldToScreen } from "@/ui/dom/UIRoot";
-import { setHudVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
+import { setHudVisible, setSwingHintVisible, type PromptShowPayload } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 import { playDoorOpen } from "@/core/fx/doorAnim";
 import { ObjectiveGlow } from "@/core/fx/objectiveGlow";
@@ -136,6 +136,7 @@ export class HomeArrivalScene extends Phaser.Scene {
       ObjectiveManager.clear();
       SpeakerRegistry.set(null);
       this.doorGlow?.destroy();
+      setSwingHintVisible(false);
     });
 
     void this.openingBeat();
@@ -215,6 +216,7 @@ export class HomeArrivalScene extends Phaser.Scene {
 
     const equippedWeapon = WeaponManager.getEquipped();
     updateHeldWeapon(this, this.player, equippedWeapon);
+    setSwingHintVisible(!!equippedWeapon && this.player.areControlsEnabled() && !this.zombieDead);
 
     if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && !this.zombieDead && equippedWeapon) {
       swingWeapon(this, this.player, equippedWeapon, [this.zombie]);

@@ -18,10 +18,11 @@ export const TILE = {
   FLOOR_CARPET_OFFICE_MEETING: 13,
   OFFICE_WALL: 14,
   OFFICE_WALL_B: 15,
+  DIRT_PATH: 16,
 } as const;
 
 export const TILESET_KEY = "tileset";
-export const TILE_COUNT = 16;
+export const TILE_COUNT = 17;
 
 export const WALL_TILE_INDICES = [
   TILE.WALL,
@@ -71,6 +72,17 @@ function drawDriveway(ctx: CanvasRenderingContext2D, ox: number): void {
 function drawGrass(ctx: CanvasRenderingContext2D, ox: number): void {
   rect(ctx, ox, 0, T, T, Palette.grass);
   speckle(ctx, ox, 0, T, T, Palette.grassDark, 14, ox + 7);
+}
+
+// a worn dirt track — warm brown earth, scattered pebbles, a few dark
+// tufts of grass poking through, distinct from the driveway's flat grey
+// tarmac (which read as a paved road, not a beaten path through a field)
+function drawDirtPath(ctx: CanvasRenderingContext2D, ox: number): void {
+  rect(ctx, ox, 0, T, T, 0x5a4632);
+  speckle(ctx, ox, 0, T, T, 0x4a3826, 20, ox + 3);
+  speckle(ctx, ox, 0, T, T, 0x6e5640, 12, ox + 9);
+  speckle(ctx, ox, 0, T, T, 0x8a7458, 6, ox + 13); // pale pebbles
+  speckle(ctx, ox, 0, T, T, 0x2f3a26, 4, ox + 5); // stray grass tufts
 }
 
 // commercial loop-pile carpet tile — a warmer, more saturated blue than
@@ -141,6 +153,7 @@ export function generateTileset(scene: Phaser.Scene): void {
   drawWall(ctx, TILE.WALL_EXT * T, true);
   drawDriveway(ctx, TILE.DRIVEWAY * T);
   drawGrass(ctx, TILE.GRASS * T);
+  drawDirtPath(ctx, TILE.DIRT_PATH * T);
   drawWindowWall(ctx, TILE.WINDOW_NIGHT * T, false);
   drawWindowWall(ctx, TILE.WINDOW_DAY * T, true);
   drawFloorCarpetOffice(ctx, TILE.FLOOR_CARPET_OFFICE * T, 0);

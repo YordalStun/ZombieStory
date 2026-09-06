@@ -30,6 +30,7 @@ export const PropTex = {
   BUSH: "prop_bush",
   FENCE_SEGMENT: "prop_fence_segment",
   STREET_LAMP: "prop_street_lamp",
+  OLD_LAMP: "prop_old_lamp",
   PORCH_LIGHT: "prop_porch_light",
   NEIGHBOR_ROOF: "prop_neighbor_roof",
   DOG_BED: "prop_dog_bed",
@@ -79,6 +80,7 @@ export const PropSize: Record<string, { w: number; h: number }> = {
   [PropTex.BUSH]: { w: 14, h: 10 },
   [PropTex.FENCE_SEGMENT]: { w: 32, h: 14 },
   [PropTex.STREET_LAMP]: { w: 10, h: 30 },
+  [PropTex.OLD_LAMP]: { w: 10, h: 30 },
   [PropTex.PORCH_LIGHT]: { w: 7, h: 8 },
   [PropTex.NEIGHBOR_ROOF]: { w: 90, h: 56 },
   [PropTex.DOG_BED]: { w: 22, h: 18 },
@@ -351,6 +353,16 @@ export function generatePropTextures(scene: Phaser.Scene): void {
     rect(ctx, w / 2 - 4, 0, 8, 9, 0x3a3a3e);
     rect(ctx, w / 2 - 3, 1, 6, 6, 0xffe9a8);
     rect(ctx, w / 2 - 3, h - 3, 6, 3, 0x1a1a1e);
+  });
+
+  // a leaning, weathered wooden post with a small lantern — the dirt track's
+  // own old light, distinct from the modern street lamp used everywhere else
+  draw(scene, PropTex.OLD_LAMP, (ctx, w, h) => {
+    rect(ctx, w / 2 - 1, 8, 3, h - 8, 0x4a3826);
+    rect(ctx, w / 2, 8, 1, h - 8, 0x3a2c1c);
+    rect(ctx, w / 2 - 4, 0, 8, 10, 0x2a2018);
+    rect(ctx, w / 2 - 3, 1, 6, 7, 0xffcf8a);
+    rect(ctx, w / 2 - 4, h - 4, 8, 4, 0x2a2018);
   });
 
   draw(scene, PropTex.PORCH_LIGHT, (ctx, w, h) => {

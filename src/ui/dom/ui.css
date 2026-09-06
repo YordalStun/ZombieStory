@@ -178,13 +178,59 @@
   transform: translate(-50%, -100%);
   background: rgba(8, 8, 12, 0.75);
   border: 1px solid rgba(240, 236, 226, 0.35);
-  padding: 4px 9px;
+  padding: 4px 9px 4px 5px;
   font-size: clamp(12px, 1vw, 15px);
   white-space: nowrap;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 #interact-prompt.hidden {
+  display: none;
+}
+
+/* a little keyboard-key graphic rather than literal "[E]" bracket text */
+.prompt-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  height: 1.5em;
+  padding: 0 3px;
+  background: linear-gradient(180deg, #f0ece2, #cfc8b4);
+  color: #1a1a1c;
+  border: 1px solid #8a8578;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.75em;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  flex: none;
+}
+
+.prompt-label {
+  white-space: nowrap;
+}
+
+/* persistent "[F] Swing" reminder during combat — fixed on screen, not
+   anchored to a world position the way the interact prompt is */
+#swing-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(8, 8, 12, 0.7);
+  border: 1px solid rgba(240, 236, 226, 0.3);
+  padding: 5px 10px 5px 5px;
+  font-size: clamp(12px, 1vw, 15px);
+  pointer-events: none;
+}
+
+#swing-hint.hidden {
   display: none;
 }
 

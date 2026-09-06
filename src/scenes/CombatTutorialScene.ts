@@ -12,6 +12,7 @@ import { LightingManager } from "@/core/managers/LightingManager";
 import { SaveManager } from "@/core/managers/SaveManager";
 import { ObjectiveManager } from "@/core/managers/ObjectiveManager";
 import { WeaponManager } from "@/core/managers/WeaponManager";
+import { AudioManager, SfxKey } from "@/core/managers/AudioManager";
 import { swingWeapon, updateHeldWeapon } from "@/core/combat/swing";
 import { DialoguePlayer } from "@/core/dialogue/DialoguePlayer";
 import type { DialogueScript } from "@/core/dialogue/DialogueTypes";
@@ -24,7 +25,7 @@ import {
   GATE_END_LINES,
 } from "@/data/dialogue/combatTutorialLines";
 import { EventBus, Events } from "@/core/EventBus";
-import { setHudVisible } from "@/ui/dom/HUDUI";
+import { setHudVisible, setSwingHintVisible } from "@/ui/dom/HUDUI";
 import { fadeIn, fadeOut, setFadeInstant } from "@/ui/dom/FadeUI";
 
 interface PropEntry {
@@ -54,6 +55,7 @@ export class CombatTutorialScene extends Phaser.Scene {
   private busy = true;
   private hasSwung = false;
   private ended = false;
+  private spookyTimer = 2500;
 
   constructor() {
     super(SceneKeys.COMBAT_TUTORIAL);
@@ -136,10 +138,19 @@ export class CombatTutorialScene extends Phaser.Scene {
     this.cameras.main.setZoom(2.1);
     this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
+    // a dark walk with nothing chasing you used to be dead silent — a low
+    // wind bed plus the odd distant groan sells "not actually safe out
+    // here" without adding any real threat
+    if (this.variant === "dirtTrack") {
+      AudioManager.startLoop("dirt_track_wind", SfxKey.WIND, 0.2);
+    }
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.lighting.destroy();
       EventBus.emit(Events.PROMPT_HIDE);
       ObjectiveManager.clear();
+      AudioManager.stopLoop("dirt_track_wind");
+      setSwingHintVisible(false);
     });
 
     void this.openingBeat();
@@ -188,8 +199,17 @@ export class CombatTutorialScene extends Phaser.Scene {
 
     if (this.busy || this.ended) return;
 
+    if (this.variant === "dirtTrack") {
+      this.spookyTimer -= delta;
+      if (this.spookyTimer <= 0) {
+        this.spookyTimer = 5000 + Math.random() * 5000;
+        AudioManager.playSfx(SfxKey.GROAN, { volume: 0.14, rate: 0.6 + Math.random() * 0.25 });
+      }
+    }
+
     const equippedWeapon = WeaponManager.getEquipped();
     updateHeldWeapon(this, this.player, equippedWeapon);
+    setSwingHintVisible(!!equippedWeapon && this.player.areControlsEnabled());
 
     if (Phaser.Input.Keyboard.JustDown(this.swingKey) && this.player.areControlsEnabled() && equippedWeapon) {
       swingWeapon(this, this.player, equippedWeapon, []);

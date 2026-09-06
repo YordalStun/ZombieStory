@@ -10,7 +10,33 @@ export interface PromptShowPayload {
 
 export function setHudVisible(visible: boolean): void {
   document.getElementById("hud-layer")!.classList.toggle("hidden", !visible);
-  if (!visible) document.getElementById("interact-prompt")!.classList.add("hidden");
+  if (!visible) {
+    document.getElementById("interact-prompt")!.classList.add("hidden");
+    setSwingHintVisible(false);
+  }
+}
+
+/** A persistent "[F] Swing" keycap hint, shown whenever the player actually has a swing available — separate from the world-anchored interact prompt, which only ever points at a specific nearby object. */
+export function setSwingHintVisible(visible: boolean): void {
+  document.getElementById("swing-hint")!.classList.toggle("hidden", !visible);
+}
+
+/** Turns a "[E] Grab keys"-style prompt string into a styled keycap + label, instead of literal bracket text. */
+function renderPromptContent(el: HTMLElement, text: string): void {
+  const match = text.match(/^\[(.+?)\]\s*(.*)$/);
+  el.replaceChildren();
+  if (!match) {
+    el.textContent = text;
+    return;
+  }
+  const keycap = document.createElement("span");
+  keycap.className = "prompt-keycap";
+  keycap.textContent = match[1];
+  const label = document.createElement("span");
+  label.className = "prompt-label";
+  label.textContent = match[2];
+  el.appendChild(keycap);
+  el.appendChild(label);
 }
 
 export function initHUDUI(): void {
@@ -82,7 +108,7 @@ export function initHUDUI(): void {
   });
 
   EventBus.on(Events.PROMPT_SHOW, (data: PromptShowPayload) => {
-    promptEl.textContent = data.text;
+    renderPromptContent(promptEl, data.text);
     promptEl.style.left = `${data.screenX}px`;
     promptEl.style.top = `${data.screenY}px`;
     promptEl.classList.remove("hidden");

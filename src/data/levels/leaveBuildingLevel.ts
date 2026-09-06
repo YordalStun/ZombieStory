@@ -70,6 +70,22 @@ function buildCarPark(): LeaveBuildingLevel {
     interactable: { prompt: "Get in the car", range: 30 },
   });
 
+  // Danny's wasn't the only car left in the building — an empty multi-storey
+  // full of other people's parked cars reads as an actual car park, not a
+  // stage with one prop on it.
+  const otherCars: Array<{ tx: number; ty: number; tint: number }> = [
+    { tx: 6, ty: 26, tint: 0x8a8a86 },
+    { tx: 15, ty: 25, tint: 0x5a6a7a },
+    { tx: 8, ty: 11, tint: 0x7a3a3a },
+    { tx: 15, ty: 9, tint: 0x3a3632 },
+    { tx: 6, ty: 6, tint: 0x9a8a5a },
+    { tx: 16, ty: 14, tint: 0x4a5a6a },
+  ];
+  for (const { tx, ty, tint } of otherCars) {
+    const p = tileCenter(tx, ty);
+    props.push({ id: `parked_car_${tx}_${ty}`, tex: PropTex.CAR, x: p.x, y: p.y, solid: true, tint });
+  }
+
   return {
     width,
     height,

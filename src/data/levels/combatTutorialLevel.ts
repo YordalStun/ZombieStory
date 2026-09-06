@@ -27,11 +27,13 @@ function buildDirtTrack(): CombatTutorialLevel {
   const height = 42;
   const grid = new TileGrid(width, height, -1);
   grid.room(0, 0, width, height, TILE.WALL_EXT, TILE.GRASS);
-  grid.fillRect(3, 1, 4, height - 2, TILE.DRIVEWAY);
+  grid.fillRect(3, 1, 4, height - 2, TILE.DIRT_PATH);
 
   const props: PropSpec[] = [];
   // close enough together that consecutive pools overlap a little — no
-  // fully dark stretch between them, even before the ambient floor helps
+  // fully dark stretch between them, even before the ambient floor helps.
+  // Old rustic post lamps here, not the modern street-lamp texture used on
+  // an actual road — this is a beaten dirt track, not a street.
   const lampSpots: Array<[number, number]> = [
     [2.3, 35],
     [7.3, 28],
@@ -43,10 +45,10 @@ function buildDirtTrack(): CombatTutorialLevel {
     const p = tileCenter(tx, ty);
     props.push({
       id: `dirt_lamp_${i}`,
-      tex: PropTex.STREET_LAMP,
+      tex: PropTex.OLD_LAMP,
       x: p.x,
       y: p.y,
-      light: { radius: 62, color: 0xffe9a8, intensity: 0.8, flicker: { intensityJitter: 0.08 } },
+      light: { radius: 58, color: 0xffcf8a, intensity: 0.7, flicker: { intensityJitter: 0.14 } },
     });
   });
 
